@@ -258,6 +258,17 @@
       const [sleepLogs, setSleepLogs] = useState(() => _saved.sleepLogs || DEFAULT_SLEEP);
       const [focusTime,   setFocusTime]   = useState(0);
       const [focusActive, setFocusActive] = useState(false);
+      const [weightLog,  setWeightLog]  = useState(() => _saved.weightLog  || []);
+      const [bmiData,    setBmiData]    = useState(() => _saved.bmiData    || { height: "", weight: "" });
+      const [notifPrefs, setNotifPrefs] = useState(() => _saved.notifPrefs || {
+        enabled: false,
+        habitReminder: true,  habitTime: "08:00",
+        waterReminder: true,  waterInterval: 2,
+        workoutReminder: false, workoutTime: "18:00",
+        streakProtection: true,
+        eveningSummary: true, summaryTime: "20:00",
+        bedtimeReminder: true,
+      });
 
       const totalCalories = meals.reduce((s, m) => s + m.calories, 0);
       const calorieGoal = (user && user.calorieGoal) ? user.calorieGoal : 2000;
@@ -284,11 +295,65 @@
           journalEntries, stressLog, moodLog, calorieLog,
           friends, notifications, workouts, sleepLogs,
           todayMood, todayStress, todaySleep,
+          weightLog, bmiData, notifPrefs,
         });
       }, [user, tasks, meals, water, streak, habits, achievements,
           journalEntries, stressLog, moodLog, calorieLog,
           friends, notifications, workouts, sleepLogs,
+          weightLog, bmiData, notifPrefs,
           todayMood, todayStress, todaySleep]);
+
+      // ── SERVICE WORKER REGISTRATION ─────────────────────────────────────────
+      useEffect(() => {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('./sw.js')
+            .then(() => {})
+            .catch(() => {});
+        }
+      }, []);
+
+      // ── NOTIFICATION SCHEDULER (checks every minute when app is open) ───────
+      useEffect(() => {
+        const sendNotif = (title, body, tag) => {
+          if (Notification.permission !== 'granted') return;
+          try {
+            if (navigator.serviceWorker?.controller) {
+              navigator.serviceWorker.controller.postMessage({ type:'SHOW_NOTIFICATION', title, body, tag });
+            } else {
+              new Notification(title, { body, tag, icon: './icon-192.png' });
+            }
+          } catch(e) {}
+        };
+        if (!notifPrefs.enabled) return;
+        const check = () => {
+          const now = new Date();
+          const hhmm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+          const todayWorkoutDone = workouts.some(w => new Date(w.id).toDateString() === now.toDateString());
+          if (notifPrefs.habitReminder && hhmm === notifPrefs.habitTime) {
+            const left = habits.filter(h=>!h.done).length;
+            if (left > 0) sendNotif('🔥 Habit Reminder', `${left} habit${left>1?'s':''} to complete today. Keep the streak!`, 'orbit-habit');
+          }
+          if (notifPrefs.streakProtection && hhmm === "20:00") {
+            if (habits.length > 0 && habitsDone === 0) sendNotif('⚡ Streak at Risk!', "You haven't logged any habits today. Open Orbit to keep your streak!", 'orbit-streak');
+          }
+          if (notifPrefs.eveningSummary && hhmm === notifPrefs.summaryTime) {
+            sendNotif('🪐 Daily Summary', `Score: ${lifeScore}/100 · Habits: ${habitsDone}/${habits.length} · Water: ${water}/${waterGoal}`, 'orbit-summary');
+          }
+          if (notifPrefs.workoutReminder && hhmm === notifPrefs.workoutTime && !todayWorkoutDone) {
+            sendNotif('💪 Workout Time!', 'Time to move! Log your workout in Orbit.', 'orbit-workout');
+          }
+          if (notifPrefs.waterReminder) {
+            const totalMins = now.getHours() * 60 + now.getMinutes();
+            const interval = Math.max(1, notifPrefs.waterInterval) * 60;
+            if (totalMins > 0 && totalMins % interval === 0 && water < waterGoal) {
+              sendNotif('💧 Hydration Check', `${water}/${waterGoal} glasses today. Time to drink!`, 'orbit-water-' + Math.floor(totalMins/interval));
+            }
+          }
+        };
+        check();
+        const timer = setInterval(check, 60000);
+        return () => clearInterval(timer);
+      }, [notifPrefs, habits, habitsDone, water, waterGoal, streak, lifeScore, workouts]);
 
       return {
         user, setUser, activeTab, setActiveTab,
@@ -301,6 +366,9 @@
         notifications, setNotifications,
         totalCalories, calorieGoal, waterGoal, tasksDone, habitsDone,
         workouts, setWorkouts, sleepLogs, setSleepLogs,
+        weightLog, setWeightLog, bmiData, setBmiData,
+        notifPrefs, setNotifPrefs,
+        setScreen: (s) => setActiveTab(s),
       };
     };
 
@@ -515,6 +583,31 @@
     }
 
     // ─── HOME SCREEN ──────────────────────────────────────────────────────────
+    // ─── ACTIVITY RINGS (Apple Watch style) ─────────────────────────────────
+    function ActivityRings({ move, hydrate, rest, size }) {
+      const s = size || 100;
+      const cx = s / 2, cy = s / 2;
+      const ring = (r, val, color) => {
+        const circ = 2 * Math.PI * r;
+        const fill = circ * Math.min(1, Math.max(0, val));
+        return (
+          <g>
+            <circle cx={cx} cy={cy} r={r} fill="none" stroke={color + "22"} strokeWidth={s * 0.1} />
+            <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth={s * 0.1}
+              strokeDasharray={`${fill} ${circ}`} strokeLinecap="round"
+              style={{ transition: "stroke-dasharray 0.8s ease" }} />
+          </g>
+        );
+      };
+      return (
+        <svg width={s} height={s} style={{ transform: "rotate(-90deg)" }}>
+          {ring(s * 0.42, move,    "#FF3B30")}
+          {ring(s * 0.30, hydrate, "#30D158")}
+          {ring(s * 0.18, rest,    "#0A84FF")}
+        </svg>
+      );
+    }
+
     function HomeScreen({ state }) {
       const { user, streak, lifeScore, totalCalories, calorieGoal, waterGoal, tasksDone, tasks, water, habitsDone, habits, moodLog, notifications, todayStress, stressLog } = state;
       const hour = new Date().getHours();
@@ -581,6 +674,39 @@
               </div>
               <Tag color={C.orange}>+1 grace day</Tag>
             </Card>
+
+            {/* ── ACTIVITY RINGS (Apple Watch-style) ── */}
+            {(() => {
+              const todayCals = state.workouts.filter(w => new Date(w.id).toDateString() === new Date().toDateString()).reduce((s,w) => s + w.calories, 0);
+              const moveGoal = 500;
+              const lastSleep = state.sleepLogs[0];
+              return (
+                <Card style={{ marginBottom:16, animation:"slideUp 0.67s ease" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+                    <div className="section-title" style={{ marginBottom:0 }}>Daily Rings</div>
+                    <div style={{ fontSize:10, color:C.textMuted }}>Move · Hydrate · Rest</div>
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", gap:20, justifyContent:"center" }}>
+                    <ActivityRings move={todayCals/moveGoal} hydrate={water/waterGoal} rest={lastSleep?.duration ? lastSleep.duration/8 : 0} size={96} />
+                    <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                      {[
+                        { color:"#FF3B30", label:"Move", val:`${todayCals} cal`, sub:`Goal: ${moveGoal} cal` },
+                        { color:"#30D158", label:"Hydrate", val:`${water}/${waterGoal}`, sub:"glasses" },
+                        { color:"#0A84FF", label:"Rest", val: lastSleep?.duration ? `${lastSleep.duration}h` : "—", sub:"Goal: 8h" },
+                      ].map(r => (
+                        <div key={r.label} style={{ display:"flex", alignItems:"center", gap:8 }}>
+                          <div style={{ width:9, height:9, borderRadius:"50%", background:r.color, flexShrink:0 }} />
+                          <div>
+                            <div style={{ fontFamily:"'Syne',sans-serif", fontSize:12, fontWeight:700, color:C.text }}>{r.label} <span style={{ color:r.color }}>{r.val}</span></div>
+                            <div style={{ fontSize:10, color:C.textMuted }}>{r.sub}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+              );
+            })()}
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16, animation: "slideUp 0.7s ease" }}>
               <Card glow={C.orange}>
@@ -1138,6 +1264,7 @@ RULES:
       const [breathingActive, setBreathingActive] = useState(false);
       const [breathPhase, setBreathPhase] = useState("inhale");
       const [breathCount, setBreathCount] = useState(4);
+      const [breathMode, setBreathMode] = useState("478");
       const breathRef = useRef();
 
       // FIX: clean up breathing interval on unmount
@@ -1145,10 +1272,18 @@ RULES:
 
       const totalCals = state.meals.reduce((s, m) => s + m.calories, 0);
 
+      const BREATH_MODES = {
+        "478": { label:"4-7-8", desc:"Anxiety relief", phases:[{name:"inhale",dur:4},{name:"hold",dur:7},{name:"exhale",dur:8}] },
+        "box":  { label:"Box", desc:"Focus & calm", phases:[{name:"inhale",dur:4},{name:"hold",dur:4},{name:"exhale",dur:4},{name:"hold",dur:4}] },
+        "22":   { label:"2-2", desc:"Quick reset", phases:[{name:"inhale",dur:2},{name:"exhale",dur:2}] },
+        "deep": { label:"Deep", desc:"Full relaxation", phases:[{name:"inhale",dur:6},{name:"hold",dur:2},{name:"exhale",dur:8},{name:"hold",dur:2}] },
+      };
+
       const startBreathing = () => {
         setBreathingActive(true);
-        const phases = [{ name: "inhale", dur: 4 }, { name: "hold", dur: 4 }, { name: "exhale", dur: 8 }, { name: "hold", dur: 4 }];
+        const phases = BREATH_MODES[breathMode].phases;
         let pi = 0, ci = phases[0].dur;
+        setBreathPhase(phases[0].name); setBreathCount(ci);
         breathRef.current = setInterval(() => {
           ci--;
           if (ci <= 0) { pi = (pi + 1) % phases.length; ci = phases[pi].dur; }
@@ -1330,8 +1465,19 @@ RULES:
                     </div>
                   ) : (
                     <div>
-                      <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 14, lineHeight: 1.6 }}>4-7-8 breathing: inhale 4s, hold 4s, exhale 8s, hold 4s. Proven to reduce anxiety within 90 seconds.</p>
-                      <GradBtn onClick={startBreathing} grad={C.gradBlue}>Start Breathing Exercise</GradBtn>
+                      <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap" }}>
+                        {Object.entries(BREATH_MODES).map(([key, m]) => (
+                          <button key={key} className="btn-press" onClick={() => setBreathMode(key)}
+                            style={{ flex:1, minWidth:70, padding:"8px 6px", background: breathMode===key?"rgba(91,141,239,0.15)":C.surface, border:`1.5px solid ${breathMode===key?C.blue:C.border}`, borderRadius:10, color:breathMode===key?C.blue:C.textMuted, fontSize:11, fontFamily:"'Syne',sans-serif", fontWeight:700, cursor:"pointer" }}>
+                            <div>{m.label}</div>
+                            <div style={{ fontWeight:400, fontSize:9, opacity:0.7 }}>{m.desc}</div>
+                          </button>
+                        ))}
+                      </div>
+                      <p style={{ fontSize: 12, color: C.textMuted, marginBottom: 14, lineHeight: 1.6 }}>
+                        {BREATH_MODES[breathMode].phases.map((p,i) => `${p.name} ${p.dur}s`).join(" → ")}. Activates parasympathetic nervous system.
+                      </p>
+                      <GradBtn onClick={startBreathing} grad={C.gradBlue}>Start {BREATH_MODES[breathMode].label} Breathing</GradBtn>
                     </div>
                   )}
                 </Card>
@@ -1516,6 +1662,8 @@ RULES:
       const [tab, setTab] = useState("tasks");
       const [newTask, setNewTask] = useState("");
       const [newHabit, setNewHabit] = useState("");
+      const [newTaskPriority, setNewTaskPriority] = useState("medium");
+      const [newTaskDue, setNewTaskDue] = useState("");
       const [focusSecs, setFocusSecs] = useState(25 * 60);
       const [focusRunning, setFocusRunning] = useState(false);
       const timerRef = useRef();
@@ -1525,8 +1673,8 @@ RULES:
       const toggleTask = (id) => state.setTasks(state.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t));
       const addTask = () => {
         if (!newTask.trim()) return;
-        state.setTasks(prev => [...prev, { id: Date.now(), text: newTask, done: false, priority: "medium", time: "30 min" }]);
-        setNewTask("");
+        state.setTasks(prev => [...prev, { id: Date.now(), text: newTask, done: false, priority: newTaskPriority, due: newTaskDue || null, time: "30 min" }]);
+        setNewTask(""); setNewTaskDue("");
       };
       const addHabit = () => {
         if (!newHabit.trim()) return;
@@ -1608,14 +1756,33 @@ RULES:
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 13, color: task.done ? C.textMuted : C.text, textDecoration: task.done ? "line-through" : "none" }}>{task.text}</div>
-                        <div style={{ fontSize: 11, color: C.textDim }}>{task.time}</div>
+                        <div style={{ fontSize: 11, color: task.due && new Date(task.due) < new Date() && !task.done ? C.red : C.textDim }}>
+                          {task.due ? `📅 ${task.due}` : task.time}
+                          {task.due && new Date(task.due) < new Date() && !task.done ? " · Overdue" : ""}
+                        </div>
                       </div>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: priorityColor[task.priority] }} />
+                      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                        <div style={{ fontSize:10, color: priorityColor[task.priority], fontFamily:"'Syne',sans-serif", fontWeight:700 }}>
+                          {task.priority === "high" ? "🔴" : task.priority === "low" ? "🟢" : "🟡"}
+                        </div>
+                        <button onClick={e => { e.stopPropagation(); state.setTasks(state.tasks.filter(t => t.id !== task.id)); }}
+                          style={{ background:"none", border:"none", color:C.textDim, fontSize:14, cursor:"pointer", padding:"0 2px", lineHeight:1 }}>×</button>
+                      </div>
                     </div>
                   ))}
-                  <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                  <div style={{ display:"flex", gap:6, marginTop:14, marginBottom:8 }}>
+                    {[["high","🔴","High"],["medium","🟡","Med"],["low","🟢","Low"]].map(([p,em,lbl]) => (
+                      <button key={p} className="btn-press" onClick={() => setNewTaskPriority(p)}
+                        style={{ flex:1, padding:"7px 4px", background: newTaskPriority===p ? (p==="high"?`rgba(255,107,107,0.15)`:p==="medium"?`rgba(255,209,102,0.15)`:`rgba(78,203,141,0.15)`) : C.surface, border:`1.5px solid ${newTaskPriority===p?(p==="high"?C.red:p==="medium"?C.yellow:C.green):C.border}`, borderRadius:10, color: newTaskPriority===p?(p==="high"?C.red:p==="medium"?C.yellow:C.green):C.textMuted, fontSize:11, fontFamily:"'Syne',sans-serif", fontWeight:700, cursor:"pointer" }}>
+                        {em} {lbl}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginBottom:8 }}>
                     <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === "Enter" && addTask()} placeholder="Add a task..."
                       style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 14px", color: C.text, fontSize: 13, outline: "none" }} />
+                    <input type="date" value={newTaskDue} onChange={e => setNewTaskDue(e.target.value)}
+                      style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 10px", color:newTaskDue?C.text:C.textMuted, fontSize:12, outline:"none", width:46 }} />
                     <button className="btn-press" onClick={addTask} style={{ background: C.grad, border: "none", borderRadius: 10, padding: "11px 16px", color: "#fff", fontSize: 18, cursor: "pointer" }}>+</button>
                   </div>
                 </Card>
@@ -1957,9 +2124,39 @@ RULES:
 
     // ─── PROGRESS SCREEN ──────────────────────────────────────────────────────
     function ProgressScreen({ state }) {
+      const [weightInput, setWeightInput] = React.useState("");
+      const [notifTab, setNotifTab] = React.useState("settings");
       const avgStress = state.stressLog.length ? (state.stressLog.reduce((a,b)=>a+b,0)/state.stressLog.length).toFixed(1) : "—";
       const avgSleep  = state.sleepLogs.length  ? (state.sleepLogs.reduce((a,b)=>a+b.duration,0)/state.sleepLogs.length).toFixed(1)+"h" : "—";
       const avgTasks  = `${state.tasksDone}/${state.tasks.length}`;
+
+      const logWeight = () => {
+        const w = parseFloat(weightInput);
+        if (!w || w < 20 || w > 500) return;
+        state.setWeightLog(prev => [{ date: new Date().toLocaleDateString(), kg: w, id: Date.now() }, ...prev].slice(0, 90));
+        setWeightInput("");
+      };
+
+      const bmi = (() => {
+        const h = parseFloat(state.bmiData?.height);
+        const w = state.weightLog[0]?.kg || parseFloat(state.bmiData?.weight);
+        if (!h || !w) return null;
+        const hm = h / 100;
+        const val = w / (hm * hm);
+        return { val: Math.round(val * 10) / 10, cat: val < 18.5 ? "Underweight" : val < 25 ? "Normal" : val < 30 ? "Overweight" : "Obese", color: val < 18.5 ? C.blue : val < 25 ? C.green : val < 30 ? C.yellow : C.red };
+      })();
+
+      const requestNotifPermission = async () => {
+        if (!('Notification' in window)) { alert('Notifications are not supported in this browser.'); return; }
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted') {
+          state.setNotifPrefs(p => ({ ...p, enabled: true }));
+          new Notification('🪐 Orbit Notifications On!', { body: "We'll remind you to log habits, drink water, and more.", icon: './icon-192.png' });
+        } else {
+          state.setNotifPrefs(p => ({ ...p, enabled: false }));
+        }
+      };
+
       return (
         <Screen>
           <div style={{ padding: "56px 20px 20px" }}>
@@ -2053,6 +2250,100 @@ RULES:
                 + Add Vision
               </button>
             </Card>
+
+            {/* ── WEIGHT TRACKER ── */}
+            <Card style={{ marginBottom:14 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+                <div className="section-title" style={{ marginBottom:0 }}>⚖️ Weight Log</div>
+                {bmi && <div style={{ fontSize:13, fontFamily:"'Syne',sans-serif", fontWeight:700, color:bmi.color }}>{bmi.val} BMI <span style={{ color:C.textMuted, fontWeight:400 }}>({bmi.cat})</span></div>}
+              </div>
+              {state.weightLog.length > 1 && (
+                <div style={{ display:"flex", alignItems:"flex-end", gap:4, height:60, marginBottom:14 }}>
+                  {state.weightLog.slice(0,10).reverse().map((w,i) => {
+                    const all = state.weightLog.slice(0,10).map(x=>x.kg);
+                    const mn = Math.min(...all), mx = Math.max(...all);
+                    const h = mx === mn ? 30 : ((w.kg - mn)/(mx - mn))*50+10;
+                    return <div key={w.id} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
+                      <div style={{ width:"100%", background:`linear-gradient(to top, ${C.blue}, ${C.blue}60)`, borderRadius:3, height:`${h}px`, minHeight:6 }} />
+                      <div style={{ fontSize:8, color:C.textMuted }}>{w.kg}kg</div>
+                    </div>;
+                  })}
+                </div>
+              )}
+              {state.weightLog.length === 0 && <div style={{ fontSize:12, color:C.textMuted, marginBottom:12 }}>Start logging your weight to track trends over time.</div>}
+              <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+                <input value={weightInput} onChange={e => setWeightInput(e.target.value)} onKeyDown={e => e.key==="Enter" && logWeight()} placeholder="e.g. 72.5 kg"
+                  style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", color:C.text, fontSize:13, outline:"none" }} />
+                <button className="btn-press" onClick={logWeight} style={{ background:C.grad, border:"none", borderRadius:10, padding:"10px 16px", color:"#fff", fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:700, cursor:"pointer" }}>Log</button>
+              </div>
+              <div style={{ display:"flex", gap:8 }}>
+                <input value={state.bmiData?.height || ""} onChange={e => state.setBmiData(p => ({...p, height: e.target.value}))} placeholder="Height (cm)"
+                  style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"9px 14px", color:C.text, fontSize:12, outline:"none" }} />
+              </div>
+              {state.weightLog.length > 0 && (
+                <div style={{ marginTop:10, display:"flex", gap:8, flexWrap:"wrap" }}>
+                  {state.weightLog.slice(0,5).map(w => (
+                    <div key={w.id} style={{ fontSize:11, background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"4px 10px", color:C.textMuted }}>{w.kg}kg · {w.date}</div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            {/* ── PUSH NOTIFICATIONS ── */}
+            <Card style={{ marginBottom:14, borderColor: state.notifPrefs?.enabled ? "rgba(78,203,141,0.3)" : C.border }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:16 }}>
+                <div>
+                  <div className="section-title" style={{ marginBottom:4 }}>🔔 Notifications</div>
+                  <div style={{ fontSize:12, color:C.textMuted }}>
+                    {Notification.permission === "granted" && state.notifPrefs?.enabled ? "✅ Active — you'll get reminders" : Notification.permission === "denied" ? "❌ Blocked in browser settings" : "Off — tap to enable"}
+                  </div>
+                </div>
+                {Notification.permission !== "denied" && (
+                  <button className="btn-press" onClick={() => {
+                    if (state.notifPrefs?.enabled) { state.setNotifPrefs(p => ({...p, enabled:false})); }
+                    else { requestNotifPermission(); }
+                  }} style={{ padding:"8px 16px", background: state.notifPrefs?.enabled ? "rgba(78,203,141,0.12)" : C.grad, border:`1px solid ${state.notifPrefs?.enabled ? C.green : "transparent"}`, borderRadius:12, color: state.notifPrefs?.enabled ? C.green : "#fff", fontFamily:"'Syne',sans-serif", fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                    {state.notifPrefs?.enabled ? "On" : "Enable"}
+                  </button>
+                )}
+              </div>
+              {state.notifPrefs?.enabled && (
+                <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                  {[
+                    { key:"habitReminder",    label:"🔥 Habit Reminder",    sub:"Morning nudge to start your habits", timeKey:"habitTime" },
+                    { key:"waterReminder",    label:"💧 Water Reminder",     sub:`Every ${state.notifPrefs.waterInterval}h reminder to drink`, timeKey:null },
+                    { key:"workoutReminder",  label:"💪 Workout Reminder",   sub:"Daily push to log a session", timeKey:"workoutTime" },
+                    { key:"eveningSummary",   label:"🪐 Evening Summary",    sub:"Your daily score + stats", timeKey:"summaryTime" },
+                    { key:"streakProtection", label:"⚡ Streak Protection",  sub:"Alert if no habits logged by 8pm", timeKey:null },
+                    { key:"bedtimeReminder",  label:"😴 Bedtime Reminder",   sub:"Wind-down nudge before sleep", timeKey:null },
+                  ].map(n => (
+                    <div key={n.key} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:13, color:C.text, fontWeight:500 }}>{n.label}</div>
+                        <div style={{ fontSize:11, color:C.textMuted }}>{n.sub}</div>
+                      </div>
+                      {n.timeKey && state.notifPrefs[n.key] && (
+                        <input type="time" value={state.notifPrefs[n.timeKey] || "08:00"} onChange={e => state.setNotifPrefs(p => ({...p, [n.timeKey]: e.target.value}))}
+                          style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:"4px 8px", color:C.text, fontSize:12, outline:"none" }} />
+                      )}
+                      <div onClick={() => state.setNotifPrefs(p => ({...p, [n.key]: !p[n.key]}))}
+                        style={{ width:44, height:24, borderRadius:12, background: state.notifPrefs[n.key] ? C.green : "rgba(255,255,255,0.1)", cursor:"pointer", position:"relative", transition:"background 0.2s", flexShrink:0 }}>
+                        <div style={{ position:"absolute", top:3, left: state.notifPrefs[n.key] ? 22 : 3, width:18, height:18, borderRadius:"50%", background:"#fff", transition:"left 0.2s" }} />
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{ fontSize:11, color:C.textMuted, borderTop:`1px solid ${C.border}`, paddingTop:10 }}>
+                    Water reminders fire every
+                    <select value={state.notifPrefs.waterInterval} onChange={e => state.setNotifPrefs(p => ({...p, waterInterval: +e.target.value}))}
+                      style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:6, padding:"2px 6px", color:C.text, fontSize:11, marginLeft:6, marginRight:6 }}>
+                      {[1,2,3,4].map(h => <option key={h} value={h}>{h}h</option>)}
+                    </select>
+                    (only while app is open)
+                  </div>
+                </div>
+              )}
+            </Card>
+
           </div>
         </Screen>
       );
