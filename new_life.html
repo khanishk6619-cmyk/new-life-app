@@ -186,94 +186,134 @@
     };
 
     // ─── APP STATE ────────────────────────────────────────────────────────────
+    // ── localStorage helpers ──────────────────────────────────────────────────
+    const nlGet = (key, fallback) => {
+      try { const v = localStorage.getItem('nl_' + key); return v !== null ? JSON.parse(v) : fallback; }
+      catch { return fallback; }
+    };
+    const nlSet = (key, val) => { try { localStorage.setItem('nl_' + key, JSON.stringify(val)); } catch {} };
+    const nlSave = (state) => { try { localStorage.setItem('nl_data', JSON.stringify(state)); } catch {} };
+    const nlLoad = () => { try { return JSON.parse(localStorage.getItem('nl_data') || 'null'); } catch { return null; } };
+
     const useAppState = () => {
-      const [user, setUser] = useState(null);
+      const _saved = React.useMemo(() => nlLoad() || {}, []);
+
+      const [user, setUser] = useState(() => _saved.user || null);
       const [activeTab, setActiveTab] = useState("home");
-      const [todayMood, setTodayMood] = useState(null);
-      const [todayStress, setTodayStress] = useState(null);
-      const [todaySleep, setTodaySleep] = useState(null);
-      const [tasks, setTasks] = useState([
+      const [todayMood, setTodayMood] = useState(() => _saved.todayMood ?? null);
+      const [todayStress, setTodayStress] = useState(() => _saved.todayStress ?? null);
+      const [todaySleep, setTodaySleep] = useState(() => _saved.todaySleep ?? null);
+
+      const DEFAULT_TASKS = [
         { id: 1, text: "Morning workout", done: false, priority: "high", time: "30 min" },
         { id: 2, text: "Review project proposal", done: false, priority: "high", time: "45 min" },
         { id: 3, text: "Call with mentor", done: true, priority: "medium", time: "20 min" },
         { id: 4, text: "Read for 20 minutes", done: false, priority: "low", time: "20 min" },
-      ]);
-      const [meals, setMeals] = useState([
+      ];
+      const DEFAULT_MEALS = [
         { id: 1, name: "Oats with banana", calories: 320, type: "breakfast", macros: { p: 8, c: 58, f: 6 }, quality: "healthy", time: "8:00 AM" },
         { id: 2, name: "Chicken salad", calories: 420, type: "lunch", macros: { p: 38, c: 22, f: 14 }, quality: "healthy", time: "1:00 PM" },
-      ]);
-      const [water, setWater] = useState(4);
-      const [streak, setStreak] = useState(12);
-      const [habits, setHabits] = useState([
-        { id: 1, name: "Morning walk", done: true, emoji: "🚶" },
-        { id: 2, name: "No phone before 8am", done: true, emoji: "📵" },
+      ];
+      const DEFAULT_HABITS = [
+        { id: 1, name: "Morning walk", done: false, emoji: "🚶" },
+        { id: 2, name: "No phone before 8am", done: false, emoji: "📵" },
         { id: 3, name: "Read 10 pages", done: false, emoji: "📚" },
         { id: 4, name: "Meditate 5 min", done: false, emoji: "🧘" },
         { id: 5, name: "Drink 8 glasses", done: false, emoji: "💧" },
-      ]);
-      const [achievements, setAchievements] = useState([
+      ];
+      const DEFAULT_ACHIEVEMENTS = [
         { id: 1, name: "First Step", emoji: "👣", desc: "Opened the app for the first time", unlocked: true, secret: false, note: "Every journey starts with a single step." },
-        { id: 2, name: "Week Warrior", emoji: "🔥", desc: "7-day streak", unlocked: true, secret: false, note: "You showed up every single day. That's discipline." },
-        { id: 3, name: "Hydration Hero", emoji: "💧", desc: "Hit water goal 5 days in a row", unlocked: true, secret: false, note: "Your body thanks you." },
+        { id: 2, name: "Week Warrior", emoji: "🔥", desc: "7-day streak", unlocked: false, secret: false, note: "You showed up every single day. That's discipline." },
+        { id: 3, name: "Hydration Hero", emoji: "💧", desc: "Hit water goal 5 days in a row", unlocked: false, secret: false, note: "Your body thanks you." },
         { id: 4, name: "Early Bird", emoji: "🌅", desc: "Opened app before 7am", unlocked: false, secret: true, note: "The world is quieter in the morning. You found that." },
         { id: 5, name: "Mindful Eater", emoji: "🥗", desc: "Logged all meals for 7 days", unlocked: false, secret: false, note: "Awareness is the first step to change." },
         { id: 6, name: "Stress Slayer", emoji: "🧘", desc: "Reduced stress score by 30%", unlocked: false, secret: true, note: "Inner peace is the ultimate achievement." },
         { id: 7, name: "Deep Worker", emoji: "🎯", desc: "4 hours of focus in one day", unlocked: false, secret: false, note: "Cal Newport would be proud." },
         { id: 8, name: "The Comeback", emoji: "💙", desc: "Returned after a 3-day absence", unlocked: false, secret: true, note: "Coming back is harder than starting. You did it." },
+      ];
+      const DEFAULT_WORKOUTS = [
+        { id: 1, type: "Run",  emoji: "🏃", duration: 30, intensity: "Medium", calories: 280, date: "Today",      time: "7:00 AM" },
+        { id: 2, type: "Yoga", emoji: "🧘", duration: 20, intensity: "Easy",   calories: 120, date: "Yesterday",  time: "6:30 AM" },
+        { id: 3, type: "Lift", emoji: "🏋️", duration: 45, intensity: "Hard",   calories: 380, date: "2 days ago", time: "5:45 PM" },
+        { id: 4, type: "HIIT", emoji: "⚡", duration: 25, intensity: "Hard",   calories: 310, date: "4 days ago", time: "7:15 AM" },
+        { id: 5, type: "Walk", emoji: "🚶", duration: 40, intensity: "Easy",   calories: 180, date: "5 days ago", time: "8:00 AM" },
+      ];
+      const DEFAULT_SLEEP = [
+        { id: 1, bedtime: "23:00", wake: "07:00", duration: 8.0,  quality: 4, date: "Last night" },
+        { id: 2, bedtime: "23:30", wake: "06:30", duration: 7.0,  quality: 3, date: "2 days ago" },
+        { id: 3, bedtime: "22:45", wake: "07:15", duration: 8.5,  quality: 5, date: "3 days ago" },
+        { id: 4, bedtime: "00:00", wake: "06:00", duration: 6.0,  quality: 2, date: "4 days ago" },
+        { id: 5, bedtime: "23:15", wake: "07:00", duration: 7.75, quality: 4, date: "5 days ago" },
+        { id: 6, bedtime: "23:00", wake: "07:30", duration: 8.5,  quality: 5, date: "6 days ago" },
+        { id: 7, bedtime: "23:45", wake: "07:15", duration: 7.5,  quality: 3, date: "7 days ago" },
+      ];
+
+      const [tasks,          setTasks]          = useState(() => _saved.tasks          || DEFAULT_TASKS);
+      const [meals,          setMeals]          = useState(() => _saved.meals          || DEFAULT_MEALS);
+      const [water,          setWater]          = useState(() => _saved.water          ?? 0);
+      const [streak,         setStreak]         = useState(() => _saved.streak         ?? 0);
+      const [habits,         setHabits]         = useState(() => _saved.habits         || DEFAULT_HABITS);
+      const [achievements,   setAchievements]   = useState(() => _saved.achievements   || DEFAULT_ACHIEVEMENTS);
+      const [journalEntries, setJournalEntries] = useState(() => _saved.journalEntries || []);
+      const [stressLog,      setStressLog]      = useState(() => _saved.stressLog      || [5, 5, 5, 5, 5, 5, 5]);
+      const [moodLog,        setMoodLog]        = useState(() => _saved.moodLog        || [70, 65, 70, 65, 70, 70, 70]);
+      const [calorieLog,     setCalorieLog]     = useState(() => _saved.calorieLog     || [0, 0, 0, 0, 0, 0, 0]);
+      const [friends,        setFriends]        = useState(() => _saved.friends        || [
+        { id: 1, name: "Priya", avatar: "👩", streak: 8,  goal: "Run 5km daily",        shared: true,  today: "Hit her goal! 🎉" },
+        { id: 2, name: "Arjun", avatar: "👨", streak: 15, goal: "No sugar for 30 days", shared: true,  today: "Day 15 strong 💪" },
+        { id: 3, name: "Meera", avatar: "🧑", streak: 3,  goal: "Sleep by 11pm",        shared: false, today: null },
       ]);
-      const [journalEntries, setJournalEntries] = useState([
-        { id: 1, date: "Today", mood: 75, text: "Had a productive morning. Meeting went well. Feeling good about the week ahead.", gratitude: ["Good coffee", "Supportive team", "Sunshine"] },
-      ]);
-      const [stressLog, setStressLog] = useState([4, 6, 5, 7, 4, 3, 5]);
-      const [moodLog, setMoodLog] = useState([70, 60, 80, 55, 75, 85, 72]);
-      const [calorieLog, setCalorieLog] = useState([1800, 2100, 1650, 2300, 1900, 1750, 1820]);
-      const [lifeScore, setLifeScore] = useState(74);
-      const [friends, setFriends] = useState([
-        { id: 1, name: "Priya", avatar: "👩", streak: 8, goal: "Run 5km daily", shared: true, today: "Hit her goal! 🎉" },
-        { id: 2, name: "Arjun", avatar: "👨", streak: 15, goal: "No sugar for 30 days", shared: true, today: "Day 15 strong 💪" },
-        { id: 3, name: "Meera", avatar: "🧑", streak: 3, goal: "Sleep by 11pm", shared: false, today: null },
-      ]);
-      const [focusTime, setFocusTime] = useState(0);
-      const [focusActive, setFocusActive] = useState(false);
-      const [notifications, setNotifications] = useState([
+      const [notifications,  setNotifications]  = useState(() => _saved.notifications || [
         { id: 1, text: "Good morning! How are you feeling today? 🌅", time: "8:00 AM", read: false },
         { id: 2, text: "Your friend Arjun completed his goal today! 🎉", time: "10:30 AM", read: false },
         { id: 3, text: "Lunchtime! Want to log what you had? 🍽️", time: "1:00 PM", read: true },
-        { id: 4, text: "Day 12 streak! You're building something real 🔥", time: "6:00 PM", read: true },
       ]);
-
-      const [workouts, setWorkouts] = useState([
-        { id: 1, type: "Run",   emoji: "🏃", duration: 30, intensity: "Medium", calories: 280, date: "Today",      time: "7:00 AM" },
-        { id: 2, type: "Yoga",  emoji: "🧘", duration: 20, intensity: "Easy",   calories: 120, date: "Yesterday",  time: "6:30 AM" },
-        { id: 3, type: "Lift",  emoji: "🏋️", duration: 45, intensity: "Hard",   calories: 380, date: "2 days ago", time: "5:45 PM" },
-        { id: 4, type: "HIIT",  emoji: "⚡", duration: 25, intensity: "Hard",   calories: 310, date: "4 days ago", time: "7:15 AM" },
-        { id: 5, type: "Walk",  emoji: "🚶", duration: 40, intensity: "Easy",   calories: 180, date: "5 days ago", time: "8:00 AM" },
-      ]);
-      const [sleepLogs, setSleepLogs] = useState([
-        { id: 1, bedtime: "23:00", wake: "07:00", duration: 8.0, quality: 4, date: "Last night" },
-        { id: 2, bedtime: "23:30", wake: "06:30", duration: 7.0, quality: 3, date: "2 days ago" },
-        { id: 3, bedtime: "22:45", wake: "07:15", duration: 8.5, quality: 5, date: "3 days ago" },
-        { id: 4, bedtime: "00:00", wake: "06:00", duration: 6.0, quality: 2, date: "4 days ago" },
-        { id: 5, bedtime: "23:15", wake: "07:00", duration: 7.75,quality: 4, date: "5 days ago" },
-        { id: 6, bedtime: "23:00", wake: "07:30", duration: 8.5, quality: 5, date: "6 days ago" },
-        { id: 7, bedtime: "23:45", wake: "07:15", duration: 7.5, quality: 3, date: "7 days ago" },
-      ]);
+      const [workouts,  setWorkouts]  = useState(() => _saved.workouts  || DEFAULT_WORKOUTS);
+      const [sleepLogs, setSleepLogs] = useState(() => _saved.sleepLogs || DEFAULT_SLEEP);
+      const [focusTime,   setFocusTime]   = useState(0);
+      const [focusActive, setFocusActive] = useState(false);
 
       const totalCalories = meals.reduce((s, m) => s + m.calories, 0);
-      const calorieGoal = 2000;
-      const tasksDone = tasks.filter(t => t.done).length;
+      const calorieGoal = (user && user.calorieGoal) ? user.calorieGoal : 2000;
+      const waterGoal   = (user && user.waterGoal)   ? user.waterGoal   : 8;
+      const tasksDone  = tasks.filter(t => t.done).length;
       const habitsDone = habits.filter(h => h.done).length;
+
+      // Dynamic life score (recalculates from real data every render)
+      const lifeScore = React.useMemo(() => {
+        const moodScore    = todayMood   ? todayMood                           : (moodLog[moodLog.length-1] || 65);
+        const stressScore  = todayStress ? Math.max(0, 100 - todayStress * 10): (100 - (stressLog[stressLog.length-1]||5) * 10);
+        const sleepScore   = sleepLogs.length ? Math.min(100, (sleepLogs[0].duration / 8) * 100) : 65;
+        const taskScore    = tasks.length   ? (tasksDone  / tasks.length)   * 100 : 50;
+        const habitScore   = habits.length  ? (habitsDone / habits.length)  * 100 : 50;
+        const waterScore   = Math.min(100, (water / waterGoal) * 100);
+        const raw = moodScore * 0.25 + stressScore * 0.2 + sleepScore * 0.2 + taskScore * 0.1 + habitScore * 0.15 + waterScore * 0.1;
+        return Math.round(Math.max(0, Math.min(100, raw)));
+      }, [todayMood, todayStress, moodLog, stressLog, sleepLogs, tasks, tasksDone, habits, habitsDone, water, waterGoal]);
+
+      // Persist all state to localStorage on any change
+      useEffect(() => {
+        nlSave({
+          user, tasks, meals, water, streak, habits, achievements,
+          journalEntries, stressLog, moodLog, calorieLog,
+          friends, notifications, workouts, sleepLogs,
+          todayMood, todayStress, todaySleep,
+        });
+      }, [user, tasks, meals, water, streak, habits, achievements,
+          journalEntries, stressLog, moodLog, calorieLog,
+          friends, notifications, workouts, sleepLogs,
+          todayMood, todayStress, todaySleep]);
 
       return {
         user, setUser, activeTab, setActiveTab,
         todayMood, setTodayMood, todayStress, setTodayStress, todaySleep, setTodaySleep,
-        tasks, setTasks, meals, setMeals, water, setWater, streak,
+        tasks, setTasks, meals, setMeals, water, setWater, streak, setStreak,
         habits, setHabits, achievements, setAchievements,
         journalEntries, setJournalEntries,
-        stressLog, moodLog, calorieLog, lifeScore,
-        friends, focusTime, setFocusTime, focusActive, setFocusActive,
+        stressLog, setStressLog, moodLog, setMoodLog, calorieLog, setCalorieLog, lifeScore,
+        friends, setFriends, focusTime, setFocusTime, focusActive, setFocusActive,
         notifications, setNotifications,
-        totalCalories, calorieGoal, tasksDone, habitsDone,
+        totalCalories, calorieGoal, waterGoal, tasksDone, habitsDone,
         workouts, setWorkouts, sleepLogs, setSleepLogs,
       };
     };
@@ -489,7 +529,7 @@
 
     // ─── HOME SCREEN ──────────────────────────────────────────────────────────
     function HomeScreen({ state }) {
-      const { user, streak, lifeScore, totalCalories, calorieGoal, tasksDone, tasks, water, habitsDone, habits, moodLog, notifications } = state;
+      const { user, streak, lifeScore, totalCalories, calorieGoal, waterGoal, tasksDone, tasks, water, habitsDone, habits, moodLog, notifications, todayStress, stressLog } = state;
       const hour = new Date().getHours();
       const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
       const greetEmoji = hour < 12 ? "🌅" : hour < 17 ? "☀️" : "🌙";
@@ -530,7 +570,7 @@
                 {[
                   { label: "Tasks", value: `${tasksDone}/${tasks.length}`, color: C.blue },
                   { label: "Calories", value: `${totalCalories}`, color: C.orange },
-                  { label: "Stress", value: "4/10", color: C.green },
+                  { label: "Stress", value: `${todayStress !== null ? todayStress : (stressLog[stressLog.length-1] || 5)}/10`, color: C.green },
                 ].map(s => (
                   <div key={s.label} style={{ textAlign: "center" }}>
                     <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 18, fontWeight: 800, color: s.color }}>{s.value}</div>
@@ -566,11 +606,11 @@
                   <div>
                     <div style={{ fontSize: 10, color: C.textMuted, fontFamily: "'Syne',sans-serif", letterSpacing: "0.08em", textTransform: "uppercase" }}>Water</div>
                     <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, color: C.text }}>{water} glasses</div>
-                    <div style={{ fontSize: 11, color: C.textMuted }}>Goal: 8 glasses</div>
+                    <div style={{ fontSize: 11, color: C.textMuted }}>Goal: {waterGoal} glasses</div>
                   </div>
                   <span style={{ fontSize: 24 }}>💧</span>
                 </div>
-                <ProgressBar value={water} max={8} color={C.blue} />
+                <ProgressBar value={water} max={waterGoal} color={C.blue} />
               </Card>
               <Card glow={C.green}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
@@ -828,7 +868,7 @@
       const [tab, setTab] = useState("calories");
       const [newMeal, setNewMeal] = useState("");
       const [addingMeal, setAddingMeal] = useState(false);
-      const [stressVal, setStressVal] = useState(4);
+      const [stressVal, setStressVal] = useState(() => state.todayStress ?? state.stressLog[state.stressLog.length-1] ?? 4);
       const [breathingActive, setBreathingActive] = useState(false);
       const [breathPhase, setBreathPhase] = useState("inhale");
       const [breathCount, setBreathCount] = useState(4);
@@ -890,6 +930,13 @@
       };
 
       const tabs = [{ id: "calories", label: "Calories", emoji: "🍽️" }, { id: "stress", label: "Stress", emoji: "🧠" }, { id: "sleep", label: "Sleep", emoji: "😴" }, { id: "body", label: "Body", emoji: "💪" }];
+
+      // Sleep tab computed values
+      const sleepLast = state.sleepLogs[0];
+      const sleepAvgH = state.sleepLogs.length ? Math.round(state.sleepLogs.reduce((s,l)=>s+l.duration,0)/state.sleepLogs.length*10)/10 : 0;
+      const sleepLHrs = sleepLast ? Math.floor(sleepLast.duration) : 0;
+      const sleepLMins = sleepLast ? Math.round((sleepLast.duration - sleepLHrs)*60) : 0;
+      const sleep7Chart = (() => { const logs = state.sleepLogs.slice(0,7).reverse(); return [...Array(Math.max(0,7-logs.length)).fill(null), ...logs]; })();
 
       return (
         <Screen>
@@ -976,7 +1023,12 @@
                     <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 16 }}>
                       {stressVal > 7 ? "High stress — let's take a breath 🧘" : stressVal > 4 ? "Moderate — keep an eye on it 👀" : "Low stress — you're doing great! 😊"}
                     </div>
-                    <input type="range" min={1} max={10} value={stressVal} onChange={e => setStressVal(+e.target.value)} />
+                    <input type="range" min={1} max={10} value={stressVal} onChange={e => {
+                      const v = +e.target.value;
+                      setStressVal(v);
+                      state.setTodayStress(v);
+                      state.setStressLog(prev => { const n = [...prev]; n[n.length-1] = v; return n; });
+                    }} />
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.textMuted, marginTop: 4 }}><span>Calm</span><span>Stressed</span></div>
                   </div>
                 </Card>
@@ -1038,10 +1090,14 @@
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                     <div>
                       <div className="section-title">Last Night</div>
-                      <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 36, fontWeight: 800, color: C.text }}>7h 23m</div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}>Quality: 7/10 · Went to bed at 11:30 PM</div>
+                      <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 36, fontWeight: 800, color: C.text }}>
+                        {sleepLast ? `${sleepLHrs}h ${sleepLMins}m` : "No data yet"}
+                      </div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}>
+                        {sleepLast ? `Quality: ${sleepLast.quality}/5 · Bedtime ${sleepLast.bedtime}` : "Log sleep in the Sleep tab"}
+                      </div>
                     </div>
-                    <Ring value={73} size={80} color={C.blue} label="7.4" sublabel="hrs avg" />
+                    <Ring value={sleepAvgH} max={10} size={80} color={C.blue} label={sleepAvgH ? `${sleepAvgH}` : "—"} sublabel="hrs avg" />
                   </div>
                   <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
                     <div style={{ fontSize: 13, color: C.textMuted }}>💡 <em>Your productivity peaks after 7.5+ hours of sleep.</em></div>
@@ -1058,10 +1114,10 @@
                 <Card>
                   <div className="section-title">7-Night Sleep Quality</div>
                   <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 80 }}>
-                    {[7,6,8,5,7,8,7].map((v, i) => (
+                    {sleep7Chart.map((log, i) => (
                       <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                        <div style={{ fontSize: 9, color: C.blue, fontFamily: "'Syne',sans-serif", fontWeight: 700 }}>{v}h</div>
-                        <div style={{ width: "100%", background: v >= 7 ? C.blue : C.yellow, borderRadius: 4, height: `${(v / 10) * 60}px`, opacity: 0.8 }} />
+                        <div style={{ fontSize: 9, color: log ? C.blue : C.textDim, fontFamily: "'Syne',sans-serif", fontWeight: 700 }}>{log ? `${log.duration}h` : ""}</div>
+                        <div style={{ width: "100%", background: log ? (log.duration >= 7 ? C.blue : C.yellow) : "rgba(255,255,255,0.04)", borderRadius: 4, height: `${log ? (log.duration / 10) * 60 : 4}px`, opacity: 0.8 }} />
                         <div style={{ fontSize: 9, color: C.textMuted }}>{"SMTWTFS"[i]}</div>
                       </div>
                     ))}
@@ -1088,14 +1144,14 @@
                       <button key={w} className="btn-press" style={{ padding: "12px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, color: "rgba(255,255,255,0.7)", fontSize: 13, cursor: "pointer", textAlign: "left" }}>{w}</button>
                     ))}
                   </div>
-                  <GradBtn grad={C.gradGreen}>Log Workout</GradBtn>
+                  <GradBtn grad={C.gradGreen} onClick={() => state.setActiveTab("workout")}>Log Workout →</GradBtn>
                 </Card>
                 <Card>
                   <div className="section-title">Water Intake</div>
-                  <div style={{ textAlign: "center", fontFamily: "'Syne',sans-serif", fontSize: 42, fontWeight: 800, color: C.blue, marginBottom: 8 }}>{state.water} <span style={{ fontSize: 16, color: C.textMuted, fontWeight: 400 }}>/ 8 glasses</span></div>
-                  <ProgressBar value={state.water} max={8} color={C.blue} height={10} />
-                  <div style={{ display: "flex", gap: 8, marginTop: 14, justifyContent: "center" }}>
-                    {[1,2,3,4,5,6,7,8].map(n => (
+                  <div style={{ textAlign: "center", fontFamily: "'Syne',sans-serif", fontSize: 42, fontWeight: 800, color: C.blue, marginBottom: 8 }}>{state.water} <span style={{ fontSize: 16, color: C.textMuted, fontWeight: 400 }}>/ {state.waterGoal} glasses</span></div>
+                  <ProgressBar value={state.water} max={state.waterGoal} color={C.blue} height={10} />
+                  <div style={{ display: "flex", gap: 8, marginTop: 14, justifyContent: "center", flexWrap: "wrap" }}>
+                    {Array.from({ length: state.waterGoal }, (_, i) => i + 1).map(n => (
                       <div key={n} style={{ width: 28, height: 28, borderRadius: "50%", background: n <= state.water ? C.blue : "rgba(91,141,239,0.1)", border: `1.5px solid ${n <= state.water ? C.blue : "rgba(91,141,239,0.2)"}`, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}
                         onClick={() => state.setWater(n)}>
                         {n <= state.water ? "💧" : ""}
@@ -1184,7 +1240,7 @@
                   {[
                     { label: "Done", value: state.tasksDone, color: C.green },
                     { label: "Left", value: state.tasks.length - state.tasksDone, color: C.orange },
-                    { label: "Rate", value: `${Math.round((state.tasksDone / state.tasks.length) * 100)}%`, color: C.blue },
+                    { label: "Rate", value: state.tasks.length ? `${Math.round((state.tasksDone / state.tasks.length) * 100)}%` : "N/A", color: C.blue },
                   ].map(s => (
                     <Card key={s.label} style={{ textAlign: "center", padding: 12 }}>
                       <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div>
@@ -1239,7 +1295,7 @@
                       <div className="section-title">Today's Habits</div>
                       <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 28, fontWeight: 800, color: C.text }}>{state.habitsDone}/{state.habits.length}</div>
                     </div>
-                    <Ring value={state.habitsDone} max={state.habits.length} size={70} color={C.yellow} label={`${Math.round((state.habitsDone / state.habits.length) * 100)}%`} />
+                    <Ring value={state.habitsDone} max={state.habits.length || 1} size={70} color={C.yellow} label={state.habits.length ? `${Math.round((state.habitsDone / state.habits.length) * 100)}%` : "0%"} />
                   </div>
                   {state.habits.map(habit => (
                     <div key={habit.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: `1px solid ${C.border}`, cursor: "pointer" }}
@@ -1303,20 +1359,27 @@
               </div>
             )}
 
-            {tab === "weekly" && (
+            {tab === "weekly" && (() => {
+              const completionPct = state.tasks.length ? Math.round((state.tasksDone / state.tasks.length) * 100) : 0;
+              const avgSleepW = state.sleepLogs.length ? Math.round(state.sleepLogs.slice(0,7).reduce((s,l)=>s+l.duration,0)/Math.min(7,state.sleepLogs.length)*10)/10 : 0;
+              const avgStressW = state.stressLog.length ? Math.round(state.stressLog.reduce((a,b)=>a+b,0)/state.stressLog.length*10)/10 : 5;
+              const recapMsg = state.streak > 14 ? `🔥 Incredible — ${state.streak}-day streak! You're unstoppable.` : state.streak > 7 ? `🌟 Amazing — ${state.streak}-day streak! Keep building.` : state.streak > 3 ? `💪 Great — ${state.streak}-day streak going strong!` : state.streak > 0 ? `You're on a ${state.streak}-day streak. Every day counts! 🌱` : "Start your journey — one habit at a time. 🌱";
+              return (
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <Card style={{ background: "rgba(78,203,141,0.05)", borderColor: "rgba(78,203,141,0.2)" }}>
                   <div className="section-title">This Week's Recap</div>
-                  <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 8 }}>"This was your best week yet! 🌟"</div>
-                  <div style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.6 }}>You completed 73% of your tasks, maintained your 12-day streak, and hit your calorie goal 5 out of 7 days.</div>
+                  <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 8 }}>{recapMsg}</div>
+                  <div style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.6 }}>
+                    {completionPct}% task completion · {state.habitsDone}/{state.habits.length} habits today · {state.streak} day streak
+                  </div>
                 </Card>
                 <Card>
                   <div className="section-title">Weekly Stats</div>
                   {[
-                    { label: "Tasks Completed", value: "18/24", bar: 75, color: C.green },
-                    { label: "Avg Calorie Score", value: "Healthy", bar: 80, color: C.orange },
-                    { label: "Avg Sleep", value: "7.2h", bar: 72, color: C.blue },
-                    { label: "Stress Average", value: "4.2/10", bar: 42, color: C.yellow },
+                    { label: "Tasks Completed", value: `${state.tasksDone}/${state.tasks.length}`, bar: completionPct, color: C.green },
+                    { label: "Calorie Tracking", value: state.meals.length ? `${state.totalCalories} kcal` : "Not tracked", bar: state.meals.length ? Math.min(100, Math.round((state.totalCalories/state.calorieGoal)*100)) : 0, color: C.orange },
+                    { label: "Avg Sleep", value: avgSleepW ? `${avgSleepW}h` : "—", bar: avgSleepW ? Math.min(100, Math.round((avgSleepW/8)*100)) : 0, color: C.blue },
+                    { label: "Stress Average", value: `${avgStressW}/10`, bar: Math.round(Math.max(0, 100 - avgStressW * 10)), color: C.yellow },
                   ].map(s => (
                     <div key={s.label} style={{ marginBottom: 16 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
@@ -1331,10 +1394,11 @@
                   <div className="section-title">Journal Prompt</div>
                   <p style={{ fontSize: 14, color: C.text, marginBottom: 12, lineHeight: 1.6 }}>💭 What made this week hard? What are you most proud of?</p>
                   <textarea placeholder="Write freely..." rows={4} style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 14px", color: C.text, fontSize: 13, outline: "none", resize: "none", lineHeight: 1.6 }} />
-                  <GradBtn style={{ marginTop: 10 }}>Save Reflection</GradBtn>
+                  <GradBtn style={{ marginTop: 10 }} onClick={() => state.setActiveTab("journal")}>Go to Journal →</GradBtn>
                 </Card>
               </div>
-            )}
+              );
+            })()}
           </div>
         </Screen>
       );
@@ -1558,6 +1622,9 @@
 
     // ─── PROGRESS SCREEN ──────────────────────────────────────────────────────
     function ProgressScreen({ state }) {
+      const avgStress = state.stressLog.length ? (state.stressLog.reduce((a,b)=>a+b,0)/state.stressLog.length).toFixed(1) : "—";
+      const avgSleep  = state.sleepLogs.length  ? (state.sleepLogs.reduce((a,b)=>a+b.duration,0)/state.sleepLogs.length).toFixed(1)+"h" : "—";
+      const avgTasks  = `${state.tasksDone}/${state.tasks.length}`;
       return (
         <Screen>
           <div style={{ padding: "56px 20px 20px" }}>
@@ -1567,7 +1634,7 @@
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 12, alignItems: "center" }}>
                 <div style={{ textAlign: "center" }}>
                   <div style={{ fontSize: 11, color: C.textDim, marginBottom: 8 }}>Day 1</div>
-                  {[{ l: "Stress", v: "8/10", c: C.red }, { l: "Sleep", v: "5h", c: C.red }, { l: "Tasks", v: "2/day", c: C.yellow }].map(m => (
+                  {[{ l: "Stress", v: "8/10", c: C.red }, { l: "Sleep", v: "5h", c: C.red }, { l: "Tasks", v: "1/day", c: C.yellow }].map(m => (
                     <div key={m.l} style={{ marginBottom: 8 }}>
                       <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 18, fontWeight: 800, color: m.c }}>{m.v}</div>
                       <div style={{ fontSize: 10, color: C.textMuted }}>{m.l}</div>
@@ -1577,7 +1644,7 @@
                 <div style={{ textAlign: "center", color: C.textMuted, fontSize: 20 }}>→</div>
                 <div style={{ textAlign: "center" }}>
                   <div style={{ fontSize: 11, color: C.green, marginBottom: 8, fontFamily: "'Syne',sans-serif", fontWeight: 700 }}>Today</div>
-                  {[{ l: "Stress", v: "4/10", c: C.green }, { l: "Sleep", v: "7.4h", c: C.green }, { l: "Tasks", v: "6/day", c: C.green }].map(m => (
+                  {[{ l: "Stress", v: `${avgStress}/10`, c: C.green }, { l: "Sleep", v: avgSleep, c: C.green }, { l: "Tasks", v: avgTasks, c: C.green }].map(m => (
                     <div key={m.l} style={{ marginBottom: 8 }}>
                       <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 18, fontWeight: 800, color: m.c }}>{m.v}</div>
                       <div style={{ fontSize: 10, color: C.textMuted }}>{m.l}</div>
@@ -1586,13 +1653,13 @@
                 </div>
               </div>
               <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12, marginTop: 4, fontSize: 13, color: C.textMuted, textAlign: "center" }}>
-                You started this journey 12 days ago. Look how far you've come 🌟
+                {state.streak > 1 ? `You've been on a ${state.streak}-day streak. Look how far you've come 🌟` : "Day 1 of your journey. Every great story starts here 🌱"}
               </div>
             </Card>
             <Card style={{ marginBottom: 14 }}>
-              <div className="section-title">Life Score — 7 Days</div>
+              <div className="section-title">Mood Score — 7 Days</div>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 80 }}>
-                {[62, 68, 55, 72, 70, 78, 74].map((v, i) => (
+                {state.moodLog.map((v, i) => (
                   <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                     <div style={{ fontSize: 9, color: C.textMuted }}>{v}</div>
                     <div style={{ width: "100%", background: `linear-gradient(to top, ${C.orange}, ${C.orange}60)`, borderRadius: 4, height: `${(v / 100) * 60}px` }} />
@@ -1616,14 +1683,30 @@
                 </Card>
               ))}
             </div>
+            <Card style={{ background: "linear-gradient(135deg, rgba(255,107,107,0.05), rgba(255,140,66,0.03))", borderColor: "rgba(255,107,107,0.12)", marginBottom: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.5)", marginBottom: 2 }}>⚙️ Data & Privacy</div>
+                  <div style={{ fontSize: 12, color: C.textDim }}>All data is stored only on this device</div>
+                </div>
+                <button className="btn-press" onClick={() => {
+                  if (window.confirm("Reset all app data? This will clear your progress, entries, and settings. This cannot be undone.")) {
+                    localStorage.clear();
+                    window.location.reload();
+                  }
+                }} style={{ background: "rgba(255,107,107,0.1)", border: "1px solid rgba(255,107,107,0.25)", borderRadius: 10, padding: "8px 14px", color: C.red, fontSize: 12, fontFamily: "'Syne',sans-serif", fontWeight: 700, cursor: "pointer" }}>
+                  Reset Data
+                </button>
+              </div>
+            </Card>
             <Card style={{ background: "linear-gradient(135deg, rgba(255,140,66,0.07), rgba(91,141,239,0.05))", borderColor: "rgba(255,140,66,0.15)" }}>
               <div className="section-title">Vision Board</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 {[
-                  { emoji: "🎯", text: "Feel less anxious, more in control" },
-                  { emoji: "💪", text: "Build consistent workout habits" },
+                  { emoji: "🎯", text: state.user?.goal || "Define your #1 goal in Settings" },
+                  { emoji: "💪", text: `Currently ${state.user?.fitness || "active"} — push further` },
                   { emoji: "🧘", text: "Meditate daily for 30 days" },
-                  { emoji: "🌱", text: "Eat healthy 6 days a week" },
+                  { emoji: "🌱", text: `Eat ${state.user?.diet === "Healthy" ? "healthy every day" : "healthier every week"}` },
                 ].map((v, i) => (
                   <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: 12, padding: 14, display: "flex", gap: 10, alignItems: "flex-start" }}>
                     <span style={{ fontSize: 20 }}>{v.emoji}</span>
@@ -1661,8 +1744,9 @@
       const saveEntry = () => {
         if (!journalText.trim() && gratitude.every(g => !g.trim())) return;
         const mood = selectedMood ? selectedMood.score : 60;
+        const now = new Date();
         state.setJournalEntries(prev => [
-          { id: Date.now(), date: "Today", mood, text: journalText, gratitude: gratitude.filter(g => g.trim()) },
+          { id: Date.now(), date: now.toLocaleDateString([], {month:"short",day:"numeric"}), dateKey: now.toDateString(), mood, text: journalText, gratitude: gratitude.filter(g => g.trim()) },
           ...prev,
         ]);
         setSaved(true);
@@ -1793,14 +1877,23 @@
                 </Card>
                 <Card>
                   <div className="section-title">Gratitude Streak</div>
-                  <div style={{ display:"flex",gap:4,flexWrap:"wrap" }}>
-                    {Array.from({length:14},(_,i) => (
-                      <div key={i} style={{ width:28,height:28,borderRadius:6,background:i<9?"rgba(255,209,102,0.35)":"rgba(255,255,255,0.05)",border:`1px solid ${i<9?"rgba(255,209,102,0.3)":C.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13 }}>
-                        {i<9?"✨":""}
+                  {(() => {
+                    const days14 = Array.from({length:14},(_,i) => new Date(Date.now()-i*86400000).toDateString()).reverse();
+                    const hasGrat = days14.map(d => state.journalEntries.some(e => e.dateKey===d && e.gratitude?.length>0));
+                    let streak14=0; for(let i=hasGrat.length-1;i>=0&&hasGrat[i];i--)streak14++;
+                    return (<>
+                      <div style={{ display:"flex",gap:4,flexWrap:"wrap" }}>
+                        {days14.map((d,i) => (
+                          <div key={i} style={{ width:28,height:28,borderRadius:6,background:hasGrat[i]?"rgba(255,209,102,0.35)":"rgba(255,255,255,0.05)",border:`1px solid ${hasGrat[i]?"rgba(255,209,102,0.3)":C.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13 }}>
+                            {hasGrat[i]?"✨":""}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                  <div style={{ fontSize:12,color:C.textMuted,marginTop:10 }}>9-day gratitude streak 🔥</div>
+                      <div style={{ fontSize:12,color:C.textMuted,marginTop:10 }}>
+                        {streak14>0 ? `${streak14}-day gratitude streak 🔥` : "Write your first gratitude entry!"}
+                      </div>
+                    </>);
+                  })()}
                 </Card>
                 <Card style={{ background:"rgba(91,141,239,0.05)",borderColor:"rgba(91,141,239,0.2)" }}>
                   <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
@@ -1817,15 +1910,25 @@
                 </Card>
                 <Card>
                   <div className="section-title">Writing Consistency This Week</div>
-                  <div style={{ display:"flex",gap:4 }}>
-                    {["M","T","W","T","F","S","S"].map((d,i) => (
-                      <div key={i} style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4 }}>
-                        <div style={{ width:"100%",aspectRatio:"1",borderRadius:6,background:[1,1,0,1,1,1,1][i]?"rgba(255,209,102,0.35)":"rgba(255,255,255,0.05)",border:`1px solid ${[1,1,0,1,1,1,1][i]?"rgba(255,209,102,0.3)":C.border}` }} />
-                        <div style={{ fontSize:9,color:C.textMuted }}>{d}</div>
+                  {(() => {
+                    const DAY_LABELS = "SMTWTFS";
+                    const days7 = Array.from({length:7},(_,i) => { const d=new Date(Date.now()-(6-i)*86400000); return { key:d.toDateString(), label:DAY_LABELS[d.getDay()] }; });
+                    const written = days7.map(d => state.journalEntries.some(e => e.dateKey===d.key));
+                    const cnt = written.filter(Boolean).length;
+                    return (<>
+                      <div style={{ display:"flex",gap:4 }}>
+                        {days7.map((d,i) => (
+                          <div key={i} style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4 }}>
+                            <div style={{ width:"100%",aspectRatio:"1",borderRadius:6,background:written[i]?"rgba(255,209,102,0.35)":"rgba(255,255,255,0.05)",border:`1px solid ${written[i]?"rgba(255,209,102,0.3)":C.border}` }} />
+                            <div style={{ fontSize:9,color:C.textMuted }}>{d.label}</div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                  <div style={{ fontSize:12,color:C.textMuted,marginTop:10 }}>6/7 days this week · Keep it up!</div>
+                      <div style={{ fontSize:12,color:C.textMuted,marginTop:10 }}>
+                        {cnt>0 ? `${cnt}/7 days this week · ${cnt>=6?"Keep it up! 🔥":cnt>=4?"Good progress! 💪":"Keep going!"}` : "Write your first journal entry today!"}
+                      </div>
+                    </>);
+                  })()}
                 </Card>
               </div>
             )}
@@ -2048,7 +2151,9 @@
 
       const logSleep = () => {
         if (quality===0) return;
-        state.setSleepLogs(prev => [{ id:Date.now(), bedtime, wake:waketime, duration:hours, quality, date:"Last night" }, ...prev]);
+        const entry = { id:Date.now(), bedtime, wake:waketime, duration:hours, quality, date:"Last night" };
+        state.setSleepLogs(prev => [entry, ...prev]);
+        state.setTodaySleep(entry);
         setSaved(true);
         setTimeout(() => setSaved(false), 2200);
       };
@@ -2173,9 +2278,9 @@
       const handleAction = (id) => {
         setOpen(false);
         if (id === "water") {
-          const next = Math.min(state.water + 1, 8);
+          const next = Math.min(state.water + 1, state.waterGoal);
           state.setWater(next);
-          showToast(`💧 ${next}/8 glasses — great work!`, C.blue);
+          showToast(`💧 ${next}/${state.waterGoal} glasses — great work!`, C.blue);
         } else {
           setMode(id);
         }
@@ -2273,7 +2378,11 @@
                   <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 24 }}>Tap to log your mood in one second</div>
                   <div style={{ display: "flex", justifyContent: "space-around", marginBottom: 24 }}>
                     {MOODS.map(m => (
-                      <button key={m.emoji} className="btn-press" onClick={() => { showToast(`${m.emoji} ${m.label} mood logged!`, C.yellow); close(); }}
+                      <button key={m.emoji} className="btn-press" onClick={() => {
+                        state.setTodayMood(m.score);
+                        state.setMoodLog(prev => { const n=[...prev]; n[n.length-1]=m.score; return n; });
+                        showToast(`${m.emoji} ${m.label} mood logged!`, C.yellow); close();
+                      }}
                         style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                         <div style={{ width: 56, height: 56, borderRadius: "50%", background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, transition: "all 0.15s" }}>{m.emoji}</div>
                         <span style={{ fontSize: 10, color: C.textMuted, fontFamily: "'Syne',sans-serif", fontWeight: 700 }}>{m.label}</span>
@@ -2325,13 +2434,32 @@
 
     // ─── MAIN APP ─────────────────────────────────────────────────────────────
     function App() {
-      const [onboarded, setOnboarded] = useState(false);
+      const [onboarded, setOnboarded] = useState(() => !!localStorage.getItem('nl_onboarded'));
       const state = useAppState();
 
       const handleOnboardComplete = (answers) => {
         state.setUser(answers);
+        localStorage.setItem('nl_onboarded', '1');
+        // increment streak on first open
+        state.setStreak(1);
         setOnboarded(true);
       };
+
+      // Track streak — increment if last open was yesterday
+      useEffect(() => {
+        if (!onboarded) return;
+        const today = new Date().toDateString();
+        const lastOpen = localStorage.getItem('nl_lastOpen');
+        if (lastOpen && lastOpen !== today) {
+          const yesterday = new Date(Date.now() - 86400000).toDateString();
+          if (lastOpen === yesterday) {
+            state.setStreak(s => s + 1);
+          } else {
+            state.setStreak(1); // streak broken
+          }
+        }
+        localStorage.setItem('nl_lastOpen', today);
+      }, [onboarded]);
 
       if (!onboarded) return <OnboardingFlow onComplete={handleOnboardComplete} />;
 
