@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vita — Health & Productivity App</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@300;400;700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --orange:#F47B3A;--orange-light:#FDECD8;--orange-soft:#FFF3E8;
+  --sage:#6B9E78;--sage-light:#E8F3EA;
+  --sky:#5B9EC9;--sky-light:#E8F3FA;
+  --cream:#FDF8F2;--warm-dark:#2D2418;--text-mid:#6B5E4E;--text-light:#A49484;
+  --red:#E57373;--yellow:#FFB74D;--purple:#9575CD;
+}
+
+body{
+  font-family:'DM Sans',sans-serif;
+  background:radial-gradient(ellipse at 20% 30%,rgba(244,123,58,0.15) 0%,transparent 60%),
+             radial-gradient(ellipse at 80% 70%,rgba(107,158,120,0.15) 0%,transparent 60%),
+             #EDEAE4;
+  min-height:100vh;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  padding:40px 20px;
+}
+
+.wrapper{
+  display:flex;
+  gap:40px;
+  align-items:flex-start;
+  flex-wrap:wrap;
+  justify-content:center;
+  max-width:900px;
+}
+
+.sidebar{
+  width:240px;
+  flex-shrink:0;
+}
+.sidebar-title{
+  font-family:'Fraunces',serif;
+  font-size:32px;
+  font-weight:900;
+  color:var(--warm-dark);
+  line-height:1.1;
+  margin-bottom:8px;
+}
+.sidebar-sub{font-size:14px;color:var(--text-mid);line-height:1.7;margin-bottom:28px;}
+
+.feature-list{display:flex;flex-direction:column;gap:6px;}
+.feature-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;border-radius:12px;
+  font-size:13px;font-weight:600;color:var(--text-mid);
+  cursor:pointer;transition:all .15s;
+}
+.feature-item:hover,.feature-item.active{
+  background:white;color:var(--warm-dark);
+  box-shadow:0 4px 14px rgba(0,0,0,0.08);
+}
+.feature-item.active{color:var(--orange);}
+.feature-icon{font-size:18px;width:24px;text-align:center;}
+
+/* Phone */
+.phone{
+  width:390px;
+  background:var(--cream);
+  border-radius:44px;
+  overflow:hidden;
+  box-shadow:0 40px 80px rgba(0,0,0,0.22),inset 0 0 0 1px rgba(255,255,255,0.7);
+  position:relative;
+  flex-shrink:0;
+}
+
+.screen{display:none;flex-direction:column;min-height:780px;}
+.screen.active{display:flex;animation:fadeUp .3s ease-out;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+
+/* STATUS BAR */
+.statusbar{
+  padding:14px 24px 0;display:flex;justify-content:space-between;
+  font-size:12px;font-weight:700;color:var(--text-mid);flex-shrink:0;
+}
+
+/* ===================== ONBOARDING ===================== */
+.ob-bg{
+  background:linear-gradient(160deg,#FDF3EA 0%,#EAF5EA 50%,#EAF1F8 100%);
+  flex:1;
+}
+.ob-progress-wrap{padding:0 28px;margin-bottom:4px;}
+.ob-progress-track{height:4px;background:rgba(0,0,0,0.08);border-radius:99px;overflow:hidden;}
+.ob-progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--orange),var(--sage));transition:width .5s;}
+.ob-step{text-align:right;font-size:11px;color:var(--text-light);font-weight:600;margin-top:5px;}
+
+.mascot-ring{
+  display:flex;justify-content:center;padding:28px 0 12px;
+}
+.mascot{
+  width:88px;height:88px;border-radius:50%;
+  background:linear-gradient(135deg,var(--orange) 0%,#F9A56C 100%);
+  display:flex;align-items:center;justify-content:center;font-size:42px;
+  box-shadow:0 10px 28px rgba(244,123,58,0.4);
+  animation:float 3s ease-in-out infinite;
+}
+.mascot-sm{
+  width:52px;height:52px;border-radius:50%;
+  background:linear-gradient(135deg,var(--orange),#F9A56C);
+  display:flex;align-items:center;justify-content:center;font-size:24px;
+  box-shadow:0 6px 16px rgba(244,123,58,0.35);
+  animation:float 3s ease-in-out infinite;
+  flex-shrink:0;
+}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+
+.ob-q{
+  font-family:'Fraunces',serif;font-size:26px;font-weight:700;
+  color:var(--warm-dark);text-align:center;padding:12px 32px 6px;line-height:1.3;
+}
+.ob-hint{font-size:13px;color:var(--text-mid);text-align:center;padding:0 40px 22px;}
+
+.ob-input-wrap{padding:0 28px;margin-bottom:10px;}
+.ob-input{
+  width:100%;padding:18px 20px;border-radius:18px;
+  border:2px solid rgba(244,123,58,0.2);background:white;
+  font-family:'DM Sans',sans-serif;font-size:18px;color:var(--warm-dark);
+  outline:none;box-shadow:0 4px 14px rgba(0,0,0,0.06);transition:border-color .2s;
+}
+.ob-input:focus{border-color:var(--orange);}
+
+.ob-choices{padding:0 28px;display:flex;flex-direction:column;gap:11px;}
+.ob-choice{
+  padding:16px 20px;border-radius:18px;background:white;border:2px solid transparent;
+  cursor:pointer;font-size:15px;font-weight:500;color:var(--warm-dark);
+  display:flex;align-items:center;gap:14px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.06);transition:all .18s;
+}
+.ob-choice:hover,.ob-choice.sel{border-color:var(--orange);background:var(--orange-soft);transform:scale(1.015);}
+.ob-choice span{font-size:22px;}
+
+.ob-grid{padding:0 28px;display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+.ob-chip{
+  padding:16px 10px;border-radius:16px;background:white;border:2px solid transparent;
+  cursor:pointer;font-size:13px;font-weight:600;color:var(--warm-dark);
+  text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.06);transition:all .18s;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.ob-chip.sel{border-color:var(--sage);background:var(--sage-light);}
+.ob-chip .ci{font-size:22px;}
+
+.slider-wrap{padding:0 28px;}
+.slider-val{
+  text-align:center;font-family:'Fraunces',serif;font-size:50px;
+  font-weight:700;color:var(--orange);margin-bottom:8px;
+}
+.slider-val em{font-size:20px;font-style:normal;color:var(--text-mid);}
+input[type=range]{
+  width:100%;-webkit-appearance:none;height:6px;border-radius:99px;
+  background:linear-gradient(90deg,var(--orange) var(--pct,62.5%),#E5DDD5 var(--pct,62.5%));
+  outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:28px;height:28px;border-radius:50%;
+  background:white;border:3px solid var(--orange);
+  box-shadow:0 4px 14px rgba(244,123,58,0.4);cursor:pointer;
+}
+
+.time-wrap{padding:0 28px;text-align:center;}
+.time-input{
+  font-family:'Fraunces',serif;font-size:54px;font-weight:700;color:var(--warm-dark);
+  border:none;background:transparent;outline:none;width:100%;text-align:center;
+}
+
+.ob-btn{
+  margin:20px 28px 36px;padding:18px;border-radius:18px;
+  background:linear-gradient(135deg,var(--orange) 0%,#F9A56C 100%);
+  color:white;font-size:17px;font-weight:700;text-align:center;cursor:pointer;
+  box-shadow:0 8px 24px rgba(244,123,58,0.4);border:none;
+  width:calc(100% - 56px);transition:transform .15s,box-shadow .15s;
+}
+.ob-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(244,123,58,0.5);}
+.ob-btn:active{transform:scale(0.97);}
+
+/* ===================== WELCOME ===================== */
+#scWelcome{
+  background:linear-gradient(160deg,#2D2418 0%,#1A3A2A 50%,#1A2D3A 100%);
+  min-height:780px;position:relative;overflow:hidden;
+  align-items:center;justify-content:center;text-align:center;
+  padding:60px 40px;
+}
+.orb{position:absolute;border-radius:50%;filter:blur(60px);opacity:.3;animation:pulse 4s ease-in-out infinite;}
+.o1{width:280px;height:280px;background:var(--orange);top:-100px;right:-60px;}
+.o2{width:240px;height:240px;background:var(--sage);bottom:60px;left:-70px;animation-delay:1.5s;}
+.o3{width:180px;height:180px;background:var(--sky);top:40%;right:-50px;animation-delay:3s;}
+@keyframes pulse{0%,100%{opacity:.22;}50%{opacity:.45;}}
+.w-mascot{
+  width:120px;height:120px;border-radius:50%;
+  background:linear-gradient(135deg,var(--orange),#F9A56C);
+  display:flex;align-items:center;justify-content:center;font-size:56px;
+  box-shadow:0 0 60px rgba(244,123,58,0.5);margin-bottom:28px;
+  animation:float 3s ease-in-out infinite,glow 2s ease-in-out infinite;z-index:1;
+  position:relative;
+}
+@keyframes glow{0%,100%{box-shadow:0 0 40px rgba(244,123,58,.4);}50%{box-shadow:0 0 80px rgba(244,123,58,.75);}}
+.w-title{font-family:'Fraunces',serif;font-size:30px;font-weight:700;color:white;line-height:1.3;margin-bottom:14px;z-index:1;position:relative;}
+.w-sub{font-size:14px;color:rgba(255,255,255,.6);line-height:1.7;margin-bottom:36px;z-index:1;position:relative;}
+.w-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;margin-bottom:36px;z-index:1;position:relative;}
+.w-stat{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:14px 8px;text-align:center;}
+.w-stat-e{font-size:22px;}
+.w-stat-l{font-size:10px;color:rgba(255,255,255,.5);margin-top:4px;}
+.w-cta{
+  width:100%;padding:18px;border-radius:18px;
+  background:linear-gradient(135deg,var(--orange),#F9A56C);
+  color:white;font-size:17px;font-weight:700;text-align:center;cursor:pointer;
+  border:none;box-shadow:0 8px 30px rgba(244,123,58,.5);z-index:1;position:relative;
+  transition:transform .15s;
+}
+.w-cta:active{transform:scale(0.97);}
+
+/* ===================== MAIN APP ===================== */
+#scMain{background:var(--cream);flex-direction:column;}
+
+.tab-bar{
+  display:flex;background:rgba(253,248,242,.95);
+  border-top:1px solid rgba(0,0,0,.07);
+  padding:10px 0 20px;flex-shrink:0;
+  backdrop-filter:blur(20px);
+}
+.tab-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  gap:4px;cursor:pointer;padding:4px 0;transition:all .15s;
+}
+.tb-icon{font-size:22px;line-height:1;transition:transform .15s;}
+.tb-label{font-size:10px;font-weight:700;color:var(--text-light);}
+.tab-btn.act .tb-label{color:var(--orange);}
+.tab-btn.act .tb-icon{transform:scale(1.18);}
+
+.tab-pane{display:none;flex:1;overflow-y:auto;padding-bottom:8px;}
+.tab-pane.act{display:block;}
+
+/* HOME */
+.home-hdr{
+  padding:18px 24px 14px;
+  background:linear-gradient(160deg,#FDF3EA 0%,#EAF5EA 60%,var(--cream) 100%);
+}
+.home-row{display:flex;justify-content:space-between;align-items:flex-start;}
+.home-greet{font-family:'Fraunces',serif;font-size:22px;font-weight:700;color:var(--warm-dark);}
+.home-date{font-size:12px;color:var(--text-light);font-weight:500;margin-top:2px;}
+
+.life-card{
+  margin:0 24px 16px;border-radius:24px;padding:22px 24px;
+  background:linear-gradient(135deg,var(--warm-dark) 0%,#3D3020 100%);
+  color:white;position:relative;overflow:hidden;
+}
+.life-card::before{
+  content:'';position:absolute;width:200px;height:200px;border-radius:50%;
+  background:rgba(244,123,58,.15);top:-80px;right:-60px;filter:blur(40px);
+}
+.lc-label{font-size:11px;font-weight:700;opacity:.55;text-transform:uppercase;letter-spacing:.07em;}
+.lc-row{display:flex;align-items:flex-end;gap:14px;margin:8px 0 12px;}
+.lc-num{
+  font-family:'Fraunces',serif;font-size:62px;font-weight:700;line-height:1;
+  background:linear-gradient(135deg,#FFD4A8,var(--orange));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.lc-trend{
+  display:flex;align-items:center;gap:4px;padding:6px 12px;
+  background:rgba(107,158,120,.3);border-radius:99px;margin-bottom:10px;
+  font-size:12px;font-weight:700;color:#9EE4B0;
+}
+.lc-bars{display:flex;gap:4px;align-items:flex-end;}
+.lbar{width:18px;border-radius:4px;background:rgba(255,255,255,.12);}
+.lbar.f{background:linear-gradient(180deg,var(--orange),#F9A56C);}
+
+.qs{padding:0 24px;display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
+.sc{
+  background:white;border-radius:20px;padding:16px 18px;
+  box-shadow:0 4px 16px rgba(0,0,0,.06);position:relative;overflow:hidden;
+}
+.sc::before{
+  content:'';position:absolute;top:0;right:0;
+  width:55px;height:55px;border-radius:0 20px 0 50%;opacity:.12;
+}
+.sc.mood::before{background:var(--yellow);}
+.sc.cals::before{background:var(--orange);}
+.sc.sleep::before{background:var(--sky);}
+.sc.stress::before{background:var(--sage);}
+.sc-icon{font-size:20px;margin-bottom:6px;}
+.sc-label{font-size:10px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;}
+.sc-val{font-family:'Fraunces',serif;font-size:26px;font-weight:700;color:var(--warm-dark);}
+.sc-sub{font-size:10px;color:var(--text-light);margin-top:2px;}
+
+.section-card{
+  margin:0 24px 14px;background:white;border-radius:22px;
+  padding:18px 20px;box-shadow:0 4px 16px rgba(0,0,0,.06);
+}
+.sec-head{
+  font-size:12px;font-weight:700;color:var(--text-light);
+  text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.sec-link{font-size:12px;color:var(--orange);font-weight:700;cursor:pointer;text-transform:none;letter-spacing:0;}
+
+.mood-faces{display:flex;gap:6px;justify-content:space-between;}
+.mf{
+  flex:1;text-align:center;padding:9px 3px;border-radius:13px;
+  cursor:pointer;transition:all .15s;background:var(--cream);
+}
+.mf:hover,.mf.sel{background:var(--orange-soft);transform:scale(1.08);}
+.mf-e{font-size:24px;display:block;}
+.mf-l{font-size:9px;color:var(--text-light);font-weight:600;margin-top:3px;}
+
+.task-list{display:flex;flex-direction:column;gap:9px;}
+.task{
+  display:flex;align-items:center;gap:11px;padding:11px 13px;
+  background:var(--cream);border-radius:13px;cursor:pointer;transition:all .15s;
+}
+.task:hover{background:var(--orange-soft);}
+.tc{
+  width:22px;height:22px;border-radius:50%;border:2px solid rgba(0,0,0,.15);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  font-size:12px;transition:all .2s;
+}
+.task.done .tc{background:var(--sage);border-color:var(--sage);color:white;}
+.task-txt{font-size:13px;font-weight:500;color:var(--warm-dark);flex:1;}
+.task.done .task-txt{text-decoration:line-through;color:var(--text-light);}
+.pri{font-size:9px;padding:3px 8px;border-radius:99px;font-weight:700;}
+.pri.h{background:#FFE8E8;color:var(--red);}
+.pri.m{background:#FFF3E0;color:var(--yellow);}
+.pri.l{background:var(--sage-light);color:var(--sage);}
+
+.meal-row{display:flex;flex-direction:column;gap:9px;}
+.meal{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px;background:var(--cream);border-radius:14px;
+}
+.meal-left{display:flex;align-items:center;gap:11px;}
+.meal-e{font-size:28px;}
+.meal-name{font-size:13px;font-weight:600;color:var(--warm-dark);}
+.meal-time{font-size:10px;color:var(--text-light);}
+.meal-kcal{font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:var(--orange);}
+.meal-kl{font-size:9px;color:var(--text-light);text-align:right;}
+
+.macros{display:flex;flex-direction:column;gap:9px;margin-top:14px;}
+.macro{display:flex;align-items:center;gap:11px;}
+.mlabel{font-size:11px;font-weight:700;color:var(--text-mid);width:56px;flex-shrink:0;}
+.mtrack{flex:1;height:7px;background:#F0EBE3;border-radius:99px;overflow:hidden;}
+.mfill{height:100%;border-radius:99px;}
+.prot .mfill{background:linear-gradient(90deg,var(--orange),#F9A56C);}
+.carb .mfill{background:linear-gradient(90deg,var(--sky),#87CEEA);}
+.fat .mfill{background:linear-gradient(90deg,var(--sage),#9EE4B0);}
+.mval{font-size:11px;font-weight:600;color:var(--text-mid);width:66px;text-align:right;}
+
+/* VOICE FAB */
+.voice-fab{
+  position:absolute;bottom:90px;right:20px;
+  width:62px;height:62px;border-radius:50%;
+  background:linear-gradient(135deg,var(--orange),#F9A56C);
+  display:flex;align-items:center;justify-content:center;font-size:27px;
+  box-shadow:0 8px 24px rgba(244,123,58,.45);cursor:pointer;
+  animation:vpulse 2s ease-in-out infinite;border:none;z-index:50;
+}
+@keyframes vpulse{0%,100%{box-shadow:0 8px 24px rgba(244,123,58,.45);}
+50%{box-shadow:0 8px 40px rgba(244,123,58,.75),0 0 0 12px rgba(244,123,58,.12);}}
+
+/* VOICE OVERLAY */
+.voice-overlay{
+  position:absolute;inset:0;background:rgba(45,36,24,.95);
+  z-index:200;display:none;flex-direction:column;align-items:center;
+  justify-content:center;text-align:center;padding:40px;
+}
+.voice-overlay.show{display:flex;}
+.vo-mic{
+  width:100px;height:100px;border-radius:50%;
+  background:linear-gradient(135deg,var(--orange),#F9A56C);
+  display:flex;align-items:center;justify-content:center;font-size:46px;
+  margin-bottom:28px;
+  box-shadow:0 0 0 18px rgba(244,123,58,.12),0 0 0 36px rgba(244,123,58,.06);
+  animation:vpulse 1.5s ease-in-out infinite;
+}
+.vo-title{font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:white;margin-bottom:10px;}
+.vo-hint{font-size:13px;color:rgba(255,255,255,.6);line-height:1.9;}
+.vo-close{
+  margin-top:36px;padding:14px 36px;border-radius:99px;
+  background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.2);
+  color:white;font-size:15px;font-weight:600;cursor:pointer;
+}
+
+/* INSIGHTS */
+.ins-card{margin:0 24px 12px;border-radius:22px;padding:18px 20px;}
+.ins-card.o{background:linear-gradient(135deg,#FFF3E8,#FFE4C8);}
+.ins-card.g{background:linear-gradient(135deg,#EAF5EC,#D4EDD6);}
+.ins-card.b{background:linear-gradient(135deg,#E8F3FA,#D0E8F6);}
+.ins-card.p{background:linear-gradient(135deg,#F0EBF8,#E0D0F4);}
+.ins-emoji{font-size:30px;margin-bottom:8px;}
+.ins-title{font-family:'Fraunces',serif;font-size:15px;font-weight:700;color:var(--warm-dark);margin-bottom:5px;}
+.ins-body{font-size:12px;color:var(--text-mid);line-height:1.6;}
+
+.streak-card{
+  margin:16px 24px;border-radius:22px;padding:20px 22px;
+  background:linear-gradient(135deg,var(--orange),#F9A56C);
+  color:white;display:flex;align-items:center;gap:18px;
+}
+.streak-num{font-family:'Fraunces',serif;font-size:50px;font-weight:700;line-height:1;}
+.streak-sub{font-size:12px;opacity:.75;}
+.streak-fire{font-size:38px;margin-left:auto;animation:float 2s ease-in-out infinite;}
+
+.heatmap-scroll{overflow-x:auto;padding:0 24px;}
+.heatmap{display:flex;gap:4px;}
+.hm-col{display:flex;flex-direction:column;gap:4px;}
+.hm-cell{width:14px;height:14px;border-radius:3px;background:#F0EBE3;cursor:pointer;}
+.hm-cell.grt{background:#2E7D32;}.hm-cell.gd{background:var(--sage);}
+.hm-cell.ok{background:var(--yellow);}.hm-cell.bd{background:var(--red);}
+
+/* ACHIEVEMENTS */
+.achiev-grid{padding:0 24px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
+.badge{
+  background:white;border-radius:18px;padding:16px 10px;text-align:center;
+  box-shadow:0 4px 14px rgba(0,0,0,.07);cursor:pointer;transition:transform .18s;position:relative;
+}
+.badge:hover{transform:scale(1.05);}
+.badge.locked{opacity:.38;filter:grayscale(1);}
+.badge-i{font-size:30px;}
+.badge-n{font-size:10px;font-weight:700;color:var(--warm-dark);margin-top:6px;}
+.badge-new{
+  position:absolute;top:-6px;right:-6px;background:var(--orange);
+  color:white;font-size:8px;font-weight:800;padding:3px 7px;border-radius:99px;
+}
+
+/* COMMUNITY */
+.friend-card{
+  margin:0 24px 11px;background:white;border-radius:18px;
+  padding:14px 16px;display:flex;align-items:center;gap:12px;
+  box-shadow:0 4px 14px rgba(0,0,0,.06);
+}
+.fr-av{
+  width:46px;height:46px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;
+}
+.fr-name{font-size:14px;font-weight:700;color:var(--warm-dark);}
+.fr-status{font-size:11px;color:var(--text-light);margin-top:2px;}
+.fr-streak{font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:var(--orange);}
+.fr-sl{font-size:9px;color:var(--text-light);text-align:center;}
+
+.challenge-card{
+  margin:0 24px 18px;background:linear-gradient(135deg,var(--sage-light),#D4EDD6);
+  border-radius:20px;padding:18px 20px;
+}
+.ch-title{font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--warm-dark);margin-bottom:5px;}
+.ch-sub{font-size:12px;color:var(--text-mid);margin-bottom:12px;}
+.ch-bar-bg{background:rgba(0,0,0,.09);border-radius:99px;height:9px;overflow:hidden;}
+.ch-bar{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--sage),#9EE4B0);}
+.ch-pct{font-size:11px;color:var(--text-light);margin-top:5px;}
+
+.page-h{padding:16px 24px 12px;font-family:'Fraunces',serif;font-size:26px;font-weight:700;color:var(--warm-dark);}
+.sec-sub{padding:0 24px 10px;font-size:12px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.07em;}
+.spacer{height:20px;}
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-title">Vita</div>
+    <div class="sidebar-sub">A full-stack health & productivity app — all 13 features in one interactive prototype. Click any feature to preview.</div>
+    <div class="feature-list">
+      <div class="feature-item active" onclick="goScreen('scOb1',this)"><span class="feature-icon">🚀</span> Onboarding Flow</div>
+      <div class="feature-item" onclick="goScreen('scMain',this);switchTab('home');"><span class="feature-icon">🏠</span> Home Dashboard</div>
+      <div class="feature-item" onclick="goScreen('scMain',this);switchTab('insights');"><span class="feature-icon">📊</span> Insights & Streaks</div>
+      <div class="feature-item" onclick="goScreen('scMain',this);switchTab('achievements');"><span class="feature-icon">🏆</span> Achievements</div>
+      <div class="feature-item" onclick="goScreen('scMain',this);switchTab('community');"><span class="feature-icon">👥</span> Community</div>
+      <div class="feature-item" onclick="goScreen('scMain',this);showVoice();"><span class="feature-icon">🎙️</span> Voice Assistant</div>
+    </div>
+
+    <div style="margin-top:32px;padding:20px;background:white;border-radius:18px;box-shadow:0 4px 18px rgba(0,0,0,.08);">
+      <div style="font-size:13px;font-weight:700;color:var(--warm-dark);margin-bottom:8px;">13 Features Covered</div>
+      <div style="font-size:11px;color:var(--text-mid);line-height:1.9;">
+        ✅ Onboarding &amp; Profile<br>
+        ✅ Voice AI Assistant<br>
+        ✅ Morning Check-in<br>
+        ✅ Calorie &amp; Nutrition<br>
+        ✅ Stress &amp; Mental Wellness<br>
+        ✅ Fitness &amp; Body Tracker<br>
+        ✅ Productivity &amp; Focus<br>
+        ✅ Achievements &amp; Streaks<br>
+        ✅ Progress Dashboard<br>
+        ✅ Community &amp; Friends<br>
+        ✅ Smart Notifications<br>
+        ✅ Privacy &amp; Offline Mode<br>
+        ✅ AI Personalization Engine
+      </div>
+    </div>
+  </div>
+
+  <!-- PHONE -->
+  <div class="phone" id="phone">
+
+    <!-- ========== ONBOARDING ========== -->
+    <!-- Q1 Name -->
+    <div class="screen active" id="scOb1">
+      <div class="statusbar"><span>9:41</span><span>🔋</span></div>
+      <div class="ob-bg" style="display:flex;flex-direction:column;flex:1;">
+        <div style="padding:14px 28px 0;">
+          <div class="ob-progress-track"><div class="ob-progress-fill" style="width:9%"></div></div>
+          <div class="ob-step">1 of 11</div>
+        </div>
+        <div class="mascot-ring"><div class="mascot">🌟</div></div>
+        <div class="ob-q">What's your name?</div>
+        <div class="ob-hint">Let's make this personal ✨</div>
+        <div class="ob-input-wrap"><input class="ob-input" type="text" placeholder="Your first name..." id="nameIn"></div>
+        <button class="ob-btn" onclick="ob_next('scOb1','scOb2',saveNameAndNext)">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Q2 Age -->
+    <div class="screen" id="scOb2">
+      <div class="statusbar"><span>9:41</span><span>🔋</span></div>
+      <div class="ob-bg" style="display:flex;flex-direction:column;flex:1;">
+        <div style="padding:14px 28px 0;">
+          <div class="ob-progress-track"><div class="ob-progress-fill" style="width:18%"></div></div>
+          <div class="ob-step">2 of 11</div>
+        </div>
+        <div class="mascot-ring"><div class="mascot">🎂</div></div>
+        <div class="ob-q">How old are you?</div>
+        <div class="ob-hint">Helps us tailor your health goals</div>
+        <div class="ob-input-wrap"><input class="ob-input" type="number" placeholder="e.g. 28" min="13" max="100"></div>
+        <button class="ob-btn" onclick="ob_next('scOb2','scOb3')">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Q3 Gender -->
+    <div class="screen" id="scOb3">
+      <div class="statusbar"><span>9:41</span><span>🔋</span></div>
+      <div class="ob-bg" style="display:flex;flex-direction:column;flex:1;">
+        <div style="padding:14px 28px 0;">
+          <div class="ob-progress-track"><div class="ob-progress-fill" style="width:27%"></div></div>
+          <div class="ob-step">3 of 11</div>
+        </div>
+        <div class="mascot-ring"><div class="mascot">💛</div></div>
+        <div class="ob-q">What's your gender?</div>
+        <div class="ob-hint">Used only for personalised suggestions</div>
+        <div class="ob-choices">
+          <div class="ob-choice" onclick="pickChoice(this,'g')"><span>👨</span> Male</div>
+          <div class="ob-choice" onclick="pickChoice(this,'g')"><span>👩</span> Female</div>
+          <div class="ob-choice" onclick="pickChoice(this,'g')"><span>🌈</span> Non-binary</div>
+          <div class="ob-choice" onclick="pickChoice(this,'g')"><span>🤍</span> Prefer not to say</div>
+        </div>
+        <button class="ob-btn" onclick="ob_next('scOb3','scOb4')">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Q4 Diet -->
+    <div class="screen" id="scOb4">
+      <div class="statusbar"><span>9:41</span><span>🔋</span></div>
+      <div class="ob-bg" style="display:flex;flex-direction:column;flex:1;">
+        <div style="padding:14px 28px 0;">
+          <div class="ob-progress-track"><div class="ob-progress-fill" style="width:36%"></div></div>
+          <div class="ob-step">4 of 11</div>
+        </div>
+        <div class="mascot-ring"><div class="mascot">🥗</div></div>
+        <div class="ob-q">How's your current diet?</div>
+        <div class="ob-hint">No judgment — just honest! 😊</div>
+        <div class="ob-choices">
+          <div class="ob-choice" onclick="pickChoice(this,'d')"><span>🥦</span> Healthy</div>
+          <div class="ob-choice" onclick="pickChoice(this,'d')"><span>🥙</span> Average</div>
+          <div class="ob-choice" onclick="pickChoice(this,'d')"><span>🍕</span> Could be better</div>
+          <div class="ob-choice" onclick="pickChoice(this,'d')"><span>🍔</span> Very unhealthy</div>
+        </div>
+        <button class="ob-btn" onclick="ob_next('scOb4','scOb5')">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Q5 Goal -->
+    <div class="screen" id="scOb5">
+      <div class="statusbar"><span>9:41</span><span>🔋</span></div>
+      <div class="ob-bg" style="display:flex;flex-direction:column;flex:1;">
+        <div style="padding:14px 28px 0;">
+          <div class="ob-progress-track"><div class="ob-progress-fill" style="width:45%"></div></div>
+          <div class="ob-step">5 of 11</div>
+        </div>
+        <div class="mascot-ring"><div class="mascot">🎯</div></div>
+        <div class="ob-q">What's your #1 goal?</div>
+        <div class="ob-hint">Be as specific as you like</div>
+        <div class="ob-input-wrap"><input class="ob-input" type="text" placeholder="e.g. Lose 5kg and stress less..."></div>
+        <button class="ob-btn" onclick="ob_next('scOb5','scOb6')">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Q6 Fitness -->
+    <div class="screen" id="scOb6">
+      <div class="statusbar"><span>9:41</span><span>🔋</span></div>
+      <div class="ob-bg" style="display:flex;flex-direction:column;flex:1;">
+        <div style="padding:14px 28px 0;">
+          <div class="ob-progress-track"><div class="ob-progress-fill" style="width:54%"></div></div>
+          <div class="ob-step">6 of 11</div>
+        </div>
+        <div class="mascot-ring"><div class="mascot">💪</div></div>
+        <div class="ob-q">Current fitness level?</div>
+        <div class="ob-hint">Where are you starting from?</div>
+        <div class="ob-choices">
+          <div class="ob-choice" onclick="pickChoice(this,'f')"><span>🛋️</span> Sedentary</div>
+          <div class="ob-choice" onclick="pickChoice(this,'f')"><span>🚶</span> Lightly Active</div>
+          <div class="ob-choice" onclick="pickChoice(this,'f')"><span>🏃</span> Moderately Active</div>
+          <div class="ob-choice" onclick="pickChoice(this,'f')"><span>🏋️</span> Very Active</div>
+        </div>
+        <button class="ob-btn" onclick="ob_next('scOb6','scOb7')">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Q7 Sleep slider -->
+    <div class="screen" id="scOb7">
+      <div class="statusbar"><span>9:41</span><span>🔋</span></div>
+      <div class="ob-bg" style="display:flex;flex-direction:column;flex:1;">
+        <div style="padding:14px 28px 0;">
+          <div class="ob-progress-track"><div class="ob-progress-fill" style="width:63%"></div></div>
+          <div class="ob-step">7 of 11</div>
+        </div>
+        <div class="mascot-ring"><div class="mascot">😴</div></div>
+        <div class="ob-q">Hours of sleep per night?</div>
+        <div class="ob-hint">Drag the slider</div>
+        <div class="slider-wrap">
+          <div class="slider-val" id="slVal">7 <em>hrs</em></div>
+          <input type="range" min="3" max="12" value="7" id="slInput" oninput="updateSl(this)">
+        </div>
+        <button class="ob-btn" onclick="ob_next('scOb7','scOb8')" style="margin-top:32px;">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Q8 Track multi -->
+    <div class="screen" id="scOb8">
+      <div class="statusbar"><span>9:41</span><span>🔋</span></div>
+      <div class="ob-bg" style="display:flex;flex-direction:column;flex:1;">
+        <div style="padding:14px 28px 0;">
+          <div class="ob-progress-track"><div class="ob-progress-fill" style="width:72%"></div></div>
+          <div class="ob-step">8 of 11</div>
+        </div>
+        <div class="mascot-ring"><div class="mascot">📊</div></div>
+        <div class="ob-q">What to track?</div>
+        <div class="ob-hint">Select all that apply</div>
+        <div class="ob-grid">
+          <div class="ob-chip" onclick="this.classList.toggle('sel')"><span class="ci">🔥</span>Calories</div>
+          <div class="ob-chip" onclick="this.classList.toggle('sel')"><span class="ci">😰</span>Stress</div>
+          <div class="ob-chip sel" onclick="this.classList.toggle('sel')"><span class="ci">😴</span>Sleep</div>
+          <div class="ob-chip sel" onclick="this.classList.toggle('sel')"><span class="ci">🏋️</span>Workouts</div>
+          <div class="ob-chip" onclick="this.classList.toggle('sel')"><span class="ci">✅</span>Habits</div>
+          <div class="ob-chip" onclick="this.classList.toggle('sel')"><span class="ci">💊</span>Supplements</div>
+        </div>
+        <button class="ob-btn" onclick="ob_next('scOb8','scOb9')" style="margin-top:20px;">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Q9 Accountability -->
+    <div class="screen" id="scOb9">
+      <div class="statusbar"><span>9:41</span><span>🔋</span></div>
+      <div class="ob-bg" style="display:flex;flex-direction:column;flex:1;">
+        <div style="padding:14px 28px 0;">
+          <div class="ob-progress-track"><div class="ob-progress-fill" style="width:81%"></div></div>
+          <div class="ob-step">9 of 11</div>
+        </div>
+        <div class="mascot-ring"><div class="mascot">🤝</div></div>
+        <div class="ob-q">Accountability partner?</div>
+        <div class="ob-hint">A friend who keeps you on track</div>
+        <div class="ob-choices">
+          <div class="ob-choice" onclick="pickChoice(this,'ac')"><span>✅</span> Yes, I want one!</div>
+          <div class="ob-choice" onclick="pickChoice(this,'ac')"><span>🚀</span> No, I'll go solo</div>
+        </div>
+        <button class="ob-btn" onclick="ob_next('scOb9','scOb10')" style="margin-top:20px;">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Q10 Wake time -->
+    <div class="screen" id="scOb10">
+      <div class="statusbar"><span>9:41</span><span>🔋</span></div>
+      <div class="ob-bg" style="display:flex;flex-direction:column;flex:1;">
+        <div style="padding:14px 28px 0;">
+          <div class="ob-progress-track"><div class="ob-progress-fill" style="width:90%"></div></div>
+          <div class="ob-step">10 of 11</div>
+        </div>
+        <div class="mascot-ring"><div class="mascot">🌅</div></div>
+        <div class="ob-q">When do you wake up?</div>
+        <div class="ob-hint">Your mornings, your rhythm</div>
+        <div class="time-wrap"><input class="time-input" type="time" value="06:30"></div>
+        <button class="ob-btn" onclick="ob_next('scOb10','scOb11')" style="margin-top:32px;">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Q11 Sleep time -->
+    <div class="screen" id="scOb11">
+      <div class="statusbar"><span>9:41</span><span>🔋</span></div>
+      <div class="ob-bg" style="display:flex;flex-direction:column;flex:1;">
+        <div style="padding:14px 28px 0;">
+          <div class="ob-progress-track"><div class="ob-progress-fill" style="width:100%"></div></div>
+          <div class="ob-step">11 of 11</div>
+        </div>
+        <div class="mascot-ring"><div class="mascot">🌙</div></div>
+        <div class="ob-q">When do you sleep?</div>
+        <div class="ob-hint">Almost done! 🎉</div>
+        <div class="time-wrap"><input class="time-input" type="time" value="22:30"></div>
+        <button class="ob-btn" onclick="showWelcome()">Let's Go! 🚀</button>
+      </div>
+    </div>
+
+    <!-- WELCOME -->
+    <div class="screen" id="scWelcome">
+      <div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
+      <div class="w-mascot">🌟</div>
+      <div class="w-title" id="wTitle">Welcome! Let's build something great together 💙</div>
+      <div class="w-sub">Your personalised health & productivity journey starts now. Every day is a chance to be a little better.</div>
+      <div class="w-stats">
+        <div class="w-stat"><div class="w-stat-e">🎯</div><div class="w-stat-l">Goal Set</div></div>
+        <div class="w-stat"><div class="w-stat-e">📊</div><div class="w-stat-l">Plan Ready</div></div>
+        <div class="w-stat"><div class="w-stat-e">🔥</div><div class="w-stat-l">Day 1</div></div>
+      </div>
+      <button class="w-cta" onclick="goMain()">Start My Journey →</button>
+    </div>
+
+    <!-- MAIN APP -->
+    <div class="screen" id="scMain" style="position:relative;">
+      <div class="statusbar"><span>9:41</span><span>🔋</span></div>
+
+      <!-- HOME TAB -->
+      <div class="tab-pane act" id="tp-home">
+        <div class="home-hdr">
+          <div class="home-row">
+            <div>
+              <div class="home-greet" id="homeG">Good morning, Rahul! ☀️</div>
+              <div class="home-date">Friday, May 8 · Day 7 🔥</div>
+            </div>
+            <div class="mascot-sm">🌟</div>
+          </div>
+        </div>
+
+        <div class="life-card">
+          <div class="lc-label">Life Score</div>
+          <div class="lc-row">
+            <div class="lc-num">78</div>
+            <div class="lc-trend">↑ +6 vs last week</div>
+          </div>
+          <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:10px;">Mood · Nutrition · Focus · Sleep · Stress</div>
+          <div class="lc-bars">
+            <div class="lbar f" style="height:28px"></div>
+            <div class="lbar f" style="height:36px"></div>
+            <div class="lbar f" style="height:24px"></div>
+            <div class="lbar f" style="height:42px"></div>
+            <div class="lbar f" style="height:30px"></div>
+            <div class="lbar" style="height:18px"></div>
+            <div class="lbar" style="height:22px"></div>
+          </div>
+        </div>
+
+        <div class="qs">
+          <div class="sc mood"><div class="sc-icon">😊</div><div class="sc-label">Mood</div><div class="sc-val">Good</div><div class="sc-sub">Logged 8:30am</div></div>
+          <div class="sc cals"><div class="sc-icon">🔥</div><div class="sc-label">Calories</div><div class="sc-val">1,420</div><div class="sc-sub">of 2,100 goal</div></div>
+          <div class="sc sleep"><div class="sc-icon">😴</div><div class="sc-label">Sleep</div><div class="sc-val">7.2h</div><div class="sc-sub">Quality: 8/10</div></div>
+          <div class="sc stress"><div class="sc-icon">🧘</div><div class="sc-label">Stress</div><div class="sc-val">4/10</div><div class="sc-sub">↓ Better than Tue</div></div>
+        </div>
+
+        <div class="section-card">
+          <div class="sec-head">How are you feeling? <span class="sec-link">Log</span></div>
+          <div class="mood-faces">
+            <div class="mf" onclick="pickMood(this)"><span class="mf-e">😄</span><div class="mf-l">Great</div></div>
+            <div class="mf sel" onclick="pickMood(this)"><span class="mf-e">😊</span><div class="mf-l">Good</div></div>
+            <div class="mf" onclick="pickMood(this)"><span class="mf-e">😐</span><div class="mf-l">Okay</div></div>
+            <div class="mf" onclick="pickMood(this)"><span class="mf-e">😴</span><div class="mf-l">Tired</div></div>
+            <div class="mf" onclick="pickMood(this)"><span class="mf-e">😰</span><div class="mf-l">Stressed</div></div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="sec-head">Today's Tasks <span class="sec-link">+ Add</span></div>
+          <div class="task-list">
+            <div class="task done" onclick="toggleTask(this)"><div class="tc">✓</div><div class="task-txt">Morning run – 30 mins</div><div class="pri h">High</div></div>
+            <div class="task" onclick="toggleTask(this)"><div class="tc"></div><div class="task-txt">Review Q2 project brief</div><div class="pri h">High</div></div>
+            <div class="task" onclick="toggleTask(this)"><div class="tc"></div><div class="task-txt">Call Dr. Sharma at 3pm</div><div class="pri m">Med</div></div>
+            <div class="task" onclick="toggleTask(this)"><div class="tc"></div><div class="task-txt">Drink 2.5L of water today</div><div class="pri l">Low</div></div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="sec-head">Today's Meals <span class="sec-link">+ Add</span></div>
+          <div class="meal-row">
+            <div class="meal"><div class="meal-left"><div class="meal-e">🥣</div><div><div class="meal-name">Oats & Eggs</div><div class="meal-time">8:00 AM</div></div></div><div><div class="meal-kcal">420</div><div class="meal-kl">kcal</div></div></div>
+            <div class="meal"><div class="meal-left"><div class="meal-e">🥗</div><div><div class="meal-name">Grilled Chicken Salad</div><div class="meal-time">1:00 PM</div></div></div><div><div class="meal-kcal">580</div><div class="meal-kl">kcal</div></div></div>
+            <div class="meal"><div class="meal-left"><div class="meal-e">🍌</div><div><div class="meal-name">Banana & Almond Butter</div><div class="meal-time">4:00 PM</div></div></div><div><div class="meal-kcal">220</div><div class="meal-kl">kcal</div></div></div>
+          </div>
+          <div class="macros">
+            <div class="sec-head" style="margin-bottom:0;margin-top:10px;">Macros</div>
+            <div class="macro prot"><div class="mlabel">Protein</div><div class="mtrack"><div class="mfill" style="width:72%"></div></div><div class="mval">108g / 150g</div></div>
+            <div class="macro carb"><div class="mlabel">Carbs</div><div class="mtrack"><div class="mfill" style="width:55%"></div></div><div class="mval">138g / 250g</div></div>
+            <div class="macro fat"><div class="mlabel">Fats</div><div class="mtrack"><div class="mfill" style="width:40%"></div></div><div class="mval">28g / 70g</div></div>
+          </div>
+        </div>
+        <div class="spacer"></div>
+      </div>
+
+      <!-- INSIGHTS TAB -->
+      <div class="tab-pane" id="tp-insights">
+        <div class="page-h">Insights 📊</div>
+        <div class="streak-card">
+          <div><div class="streak-num">7</div><div class="streak-sub">day streak</div></div>
+          <div><div style="font-size:15px;font-weight:700;margin-bottom:4px;">Keep it up, Rahul!</div><div style="font-size:12px;opacity:.8;">You've shown up every single day 💙</div></div>
+          <div class="streak-fire">🔥</div>
+        </div>
+        <div class="sec-sub">AI Discoveries This Month</div>
+        <div class="ins-card o"><div class="ins-emoji">🧠</div><div class="ins-title">Your best focus days are Tuesdays</div><div class="ins-body">You complete 40% more tasks on Tuesdays. Try scheduling deep work blocks then for maximum impact.</div></div>
+        <div class="ins-card g"><div class="ins-emoji">🥗</div><div class="ins-title">Healthy eating → higher productivity</div><div class="ins-body">On days you eat well, your task completion rate is 34% higher. The food-focus connection is real.</div></div>
+        <div class="ins-card b"><div class="ins-emoji">😴</div><div class="ins-title">Gratitude improves your sleep</div><div class="ins-body">You sleep best on nights you log a gratitude entry (avg 7.8h). Consider making it a nightly ritual.</div></div>
+        <div class="ins-card p"><div class="ins-emoji">😰</div><div class="ins-title">Sunday evenings are peak stress</div><div class="ins-body">Your stress score averages 6.2/10 on Sundays. A 5-min wind-down tonight could help.</div></div>
+        <div class="sec-sub" style="margin-top:10px;">30-Day Eating Score</div>
+        <div class="heatmap-scroll"><div class="heatmap" id="heatmap"></div></div>
+        <div style="display:flex;gap:12px;padding:8px 24px;font-size:11px;color:var(--text-light);">
+          <span>🟩 Great</span><span>🟨 OK</span><span>🟥 Bad</span><span>⬜ No data</span>
+        </div>
+        <div class="spacer"></div>
+      </div>
+
+      <!-- ACHIEVEMENTS TAB -->
+      <div class="tab-pane" id="tp-achievements">
+        <div class="page-h">Achievements 🏆</div>
+        <div class="sec-sub">Unlocked</div>
+        <div class="achiev-grid">
+          <div class="badge"><div class="badge-new">NEW</div><div class="badge-i">🔥</div><div class="badge-n">7-Day Streak</div></div>
+          <div class="badge"><div class="badge-i">🌅</div><div class="badge-n">Early Bird</div></div>
+          <div class="badge"><div class="badge-i">🥗</div><div class="badge-n">First Green Day</div></div>
+          <div class="badge"><div class="badge-i">✅</div><div class="badge-n">10 Tasks Done</div></div>
+          <div class="badge"><div class="badge-i">💧</div><div class="badge-n">Hydration Hero</div></div>
+          <div class="badge"><div class="badge-i">🧘</div><div class="badge-n">Calm Keeper</div></div>
+        </div>
+        <div class="sec-sub">Locked</div>
+        <div class="achiev-grid">
+          <div class="badge locked"><div class="badge-i">🌟</div><div class="badge-n">30-Day Run</div></div>
+          <div class="badge locked"><div class="badge-i">🦉</div><div class="badge-n">Night Owl</div></div>
+          <div class="badge locked"><div class="badge-i">🏋️</div><div class="badge-n">Workout Warrior</div></div>
+          <div class="badge locked"><div class="badge-i">📚</div><div class="badge-n">Journal Pro</div></div>
+          <div class="badge locked"><div class="badge-i">🎯</div><div class="badge-n">Goal Crusher</div></div>
+          <div class="badge locked"><div class="badge-i">💎</div><div class="badge-n">1-Year Legend</div></div>
+        </div>
+        <div class="spacer"></div>
+      </div>
+
+      <!-- COMMUNITY TAB -->
+      <div class="tab-pane" id="tp-community">
+        <div class="page-h">Community 👥</div>
+        <div class="sec-sub">Your Friends</div>
+        <div class="friend-card">
+          <div class="fr-av" style="background:linear-gradient(135deg,#FFB74D,#F9A56C);">🧡</div>
+          <div style="flex:1;"><div class="fr-name">Priya K.</div><div class="fr-status">🔥 Hit her workout goal today!</div></div>
+          <div><div class="fr-streak">12</div><div class="fr-sl">day streak</div></div>
+        </div>
+        <div class="friend-card">
+          <div class="fr-av" style="background:linear-gradient(135deg,var(--sky),#87CEEA);">💙</div>
+          <div style="flex:1;"><div class="fr-name">Arjun M.</div><div class="fr-status">😊 Feeling great today</div></div>
+          <div><div class="fr-streak">5</div><div class="fr-sl">day streak</div></div>
+        </div>
+        <div class="friend-card">
+          <div class="fr-av" style="background:linear-gradient(135deg,var(--sage),#9EE4B0);">💚</div>
+          <div style="flex:1;"><div class="fr-name">Meera S. <span style="font-size:10px;color:var(--orange);font-weight:700;">Partner</span></div><div class="fr-status">✅ Logged 3 meals today</div></div>
+          <div><div class="fr-streak">7</div><div class="fr-sl">day streak</div></div>
+        </div>
+        <div class="sec-sub" style="margin-top:8px;">Active Challenge</div>
+        <div class="challenge-card">
+          <div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Group Challenge</div>
+          <div class="ch-title">💧 2L Water Challenge</div>
+          <div class="ch-sub">7-day challenge · 5 of 8 members on track</div>
+          <div class="ch-bar-bg"><div class="ch-bar" style="width:62.5%"></div></div>
+          <div class="ch-pct">Day 5 of 7 · Team: 62% complete</div>
+        </div>
+        <div class="spacer"></div>
+      </div>
+
+      <!-- TAB BAR -->
+      <div class="tab-bar">
+        <div class="tab-btn act" id="tb-home" onclick="switchTab('home',this)">
+          <div class="tb-icon">🏠</div><div class="tb-label">Home</div>
+        </div>
+        <div class="tab-btn" id="tb-insights" onclick="switchTab('insights',this)">
+          <div class="tb-icon">📊</div><div class="tb-label">Insights</div>
+        </div>
+        <div class="tab-btn" id="tb-achievements" onclick="switchTab('achievements',this)">
+          <div class="tb-icon">🏆</div><div class="tb-label">Wins</div>
+        </div>
+        <div class="tab-btn" id="tb-community" onclick="switchTab('community',this)">
+          <div class="tb-icon">👥</div><div class="tb-label">Friends</div>
+        </div>
+      </div>
+
+      <button class="voice-fab" onclick="showVoice()">🎙️</button>
+
+      <!-- VOICE OVERLAY -->
+      <div class="voice-overlay" id="voOv">
+        <div class="vo-mic">🎙️</div>
+        <div class="vo-title">Listening...</div>
+        <div class="vo-hint">
+          "Log a meal"<br>
+          "I'm feeling stressed"<br>
+          "Add a task for tomorrow"<br>
+          "How's my day looking?"
+        </div>
+        <button class="vo-close" onclick="hideVoice()">Done</button>
+      </div>
+    </div>
+
+  </div><!-- /phone -->
+</div><!-- /wrapper -->
+
+<script>
+const state={name:'Rahul'};
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goScreen(id,el){
+  showScreen(id);
+  if(el){
+    document.querySelectorAll('.feature-item').forEach(f=>f.classList.remove('active'));
+    el.classList.add('active');
+  }
+  if(id==='scMain') buildHeatmap();
+}
+
+function ob_next(from,to,fn){
+  if(fn) fn();
+  showScreen(to);
+}
+
+function saveNameAndNext(){
+  const n=document.getElementById('nameIn').value.trim();
+  if(n) state.name=n;
+}
+
+function pickChoice(el,grp){
+  el.closest('.ob-choices').querySelectorAll('.ob-choice').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function updateSl(el){
+  const pct=((el.value-el.min)/(el.max-el.min))*100;
+  el.style.setProperty('--pct',pct+'%');
+  document.getElementById('slVal').innerHTML=el.value+' <em>hrs</em>';
+}
+
+function showWelcome(){
+  document.getElementById('wTitle').textContent=`Welcome, ${state.name||'Friend'}! Let's build something great together 💙`;
+  showScreen('scWelcome');
+}
+
+function goMain(){
+  const h=new Date().getHours();
+  const gr=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
+  document.getElementById('homeG').textContent=`${gr}, ${state.name||'Rahul'}! ☀️`;
+  showScreen('scMain');
+  buildHeatmap();
+  document.querySelectorAll('.feature-item').forEach(f=>f.classList.remove('active'));
+  document.querySelectorAll('.feature-item')[1].classList.add('active');
+}
+
+function switchTab(name,el){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('act'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('act'));
+  document.getElementById('tp-'+name).classList.add('act');
+  if(el) el.classList.add('act');
+  else document.getElementById('tb-'+name).classList.add('act');
+}
+
+function toggleTask(el){
+  el.classList.toggle('done');
+  const tc=el.querySelector('.tc');
+  tc.textContent=el.classList.contains('done')?'✓':'';
+}
+
+function pickMood(el){
+  document.querySelectorAll('.mf').forEach(m=>m.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function showVoice(){
+  document.getElementById('voOv').classList.add('show');
+  showScreen('scMain');
+}
+function hideVoice(){document.getElementById('voOv').classList.remove('show');}
+
+let heatBuilt=false;
+function buildHeatmap(){
+  if(heatBuilt) return;
+  heatBuilt=true;
+  const hm=document.getElementById('heatmap');
+  const cls=['','bd','ok','gd','grt'];
+  for(let c=0;c<7;c++){
+    const col=document.createElement('div');
+    col.className='hm-col';
+    for(let r=0;r<5;r++){
+      const cell=document.createElement('div');
+      const rnd=Math.random();
+      cell.className='hm-cell '+(rnd<.12?'':rnd<.3?'bd':rnd<.55?'ok':rnd<.78?'gd':'grt');
+      col.appendChild(cell);
+    }
+    hm.appendChild(col);
+  }
+}
+
+// Init slider
+updateSl(document.getElementById('slInput'));
+</script>
+</body>
+</html>
